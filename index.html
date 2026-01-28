@@ -1616,6 +1616,30 @@
                             </div>
                         </div>
                     </div>
+                    <!-- Token List Table -->
+                    <div id="eth-tokenlist-section" class="chart-grid" style="margin-bottom: 24px;">
+                        <div class="chart-card full">
+                            <div class="chart-header">
+                                <div class="chart-title">All Token Holdings</div>
+                                <div class="chart-subtitle">Complete token breakdown with USD values</div>
+                            </div>
+                            <div class="table-container">
+                                <table id="allTokensTable">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Token</th>
+                                            <th style="text-align: right;">Balance</th>
+                                            <th style="text-align: right;">Price</th>
+                                            <th style="text-align: right;">USD Value</th>
+                                            <th style="text-align: right;">% of Tokens</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                     <!-- Heatmap & Lorenz -->
                     <div id="eth-heatmap-section" class="chart-grid" style="margin-bottom: 24px;">
                         <div class="chart-card">
@@ -1779,10 +1803,55 @@ const CONFIG = {
     ETHERSCAN_KEY: 'Y73RUTA4VPZYAZH23U8H3KZ1A37Z3C5CJZ',
     BLOCKSTREAM_API: 'https://blockstream.info/api',
     COINGECKO_API: 'https://api.coingecko.com/api/v3/simple/price',
-    DELAY_MS: 220,
+    COINGECKO_TOKEN_API: 'https://api.coingecko.com/api/v3/simple/token_price/ethereum',
+    DELAY_MS: 250,
     TX_LIMIT: 1000,
     TOKEN_LIMIT: 100,
     STABLECOINS: ['usdt', 'usdc', 'dai', 'busd', 'tusd', 'usdp', 'frax', 'lusd', 'usdd', 'gusd'],
+    // Map of common token symbols to CoinGecko IDs
+    TOKEN_IDS: {
+        'USDT': 'tether',
+        'USDC': 'usd-coin',
+        'DAI': 'dai',
+        'WETH': 'weth',
+        'WBTC': 'wrapped-bitcoin',
+        'LINK': 'chainlink',
+        'UNI': 'uniswap',
+        'AAVE': 'aave',
+        'MKR': 'maker',
+        'SNX': 'havven',
+        'COMP': 'compound-governance-token',
+        'CRV': 'curve-dao-token',
+        'LDO': 'lido-dao',
+        'SHIB': 'shiba-inu',
+        'PEPE': 'pepe',
+        'APE': 'apecoin',
+        'SAND': 'the-sandbox',
+        'MANA': 'decentraland',
+        'GRT': 'the-graph',
+        'ENS': 'ethereum-name-service',
+        'MATIC': 'matic-network',
+        'STETH': 'staked-ether',
+        'RETH': 'rocket-pool-eth',
+        'CBETH': 'coinbase-wrapped-staked-eth',
+        'FRAX': 'frax',
+        'LUSD': 'liquity-usd',
+        'BUSD': 'binance-usd',
+        'TUSD': 'true-usd',
+        'FXS': 'frax-share',
+        'RPL': 'rocket-pool',
+        '1INCH': '1inch',
+        'SUSHI': 'sushi',
+        'YFI': 'yearn-finance',
+        'BAL': 'balancer',
+        'DYDX': 'dydx',
+        'IMX': 'immutable-x',
+        'ARB': 'arbitrum',
+        'OP': 'optimism',
+        'BLUR': 'blur',
+        'WLD': 'worldcoin-wld',
+        'BONK': 'bonk'
+    },
     DEFI_PROTOCOLS: {
         '0x7a250d5630b4cf539739df2c5dacb4c659f2488d': 'Uniswap V2',
         '0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45': 'Uniswap V3',
@@ -1806,6 +1875,7 @@ let state = {
     btcData: [],
     ethPrice: 0,
     btcPrice: 0,
+    tokenPrices: {}, // Cache for token prices { symbol: priceUsd }
     segment: 'combined',
     period: 0,
     visibleStats: {
@@ -1817,6 +1887,7 @@ let state = {
         'eth-distribution': true,
         'eth-flow': true,
         'eth-tokens': true,
+        'eth-tokenlist': true,
         'eth-segments': true,
         'eth-heatmap': true,
         'eth-lorenz': true,
@@ -1947,6 +2018,44 @@ async function fetchPrices() {
     }
 }
 
+// Fetch prices for multiple tokens from CoinGecko
+async function fetchTokenPrices(symbols) {
+    try {
+        // Get CoinGecko IDs for known tokens
+        const ids = symbols
+            .map(s => CONFIG.TOKEN_IDS[s.toUpperCase()])
+            .filter(id => id);
+        
+        if (ids.length === 0) return;
+        
+        const res = await fetch(`${CONFIG.COINGECKO_API}?ids=${ids.join(',')}&vs_currencies=usd`);
+        const data = await res.json();
+        
+        // Map back to symbols
+        Object.entries(CONFIG.TOKEN_IDS).forEach(([symbol, id]) => {
+            if (data[id]?.usd) {
+                state.tokenPrices[symbol.toUpperCase()] = data[id].usd;
+            }
+        });
+        
+        // Stablecoins default to $1
+        CONFIG.STABLECOINS.forEach(s => {
+            state.tokenPrices[s.toUpperCase()] = 1;
+        });
+        
+    } catch (e) {
+        console.error('Error fetching token prices:', e);
+    }
+}
+
+// Get token price from cache or estimate
+function getTokenPrice(symbol) {
+    const sym = symbol.toUpperCase();
+    if (state.tokenPrices[sym]) return state.tokenPrices[sym];
+    if (CONFIG.STABLECOINS.includes(sym.toLowerCase())) return 1;
+    return 0; // Unknown token
+}
+
 async function etherscanCall(module, action, params = {}) {
     const url = new URL(CONFIG.ETHERSCAN_API);
     url.searchParams.set('chainid', CONFIG.CHAINID);
@@ -1964,20 +2073,42 @@ async function fetchEthWallet(address) {
     const result = {
         address,
         balance: 0,
-        tokens: [],
+        tokens: [],        // Token transactions (for flow analysis)
+        tokenBalances: [], // Actual current balances
         rawTx: [],
         rawInternalTx: [],
         wbtcBalance: 0
     };
 
-    // Balance
+    // ETH Balance
     const balRes = await etherscanCall('account', 'balance', { address, tag: 'latest' });
     if (balRes.status === '1') {
         result.balance = weiToEth(balRes.result);
     }
     await delay(CONFIG.DELAY_MS);
 
-    // Tokens
+    // Try to get actual token balances using addresstokenbalance
+    const tokenBalRes = await etherscanCall('account', 'addresstokenbalance', { address, page: 1, offset: 100 });
+    if (tokenBalRes.status === '1' && Array.isArray(tokenBalRes.result)) {
+        result.tokenBalances = tokenBalRes.result.map(t => ({
+            symbol: t.TokenSymbol || 'UNKNOWN',
+            name: t.TokenName || '',
+            balance: parseFloat(t.TokenQuantity) || 0,
+            contractAddress: t.TokenAddress,
+            decimals: parseInt(t.TokenDivisor) || 18
+        })).filter(t => t.balance > 0);
+        
+        // Get WBTC balance from token balances
+        const wbtc = result.tokenBalances.find(t => 
+            t.contractAddress?.toLowerCase() === CONFIG.WBTC_ADDRESS
+        );
+        if (wbtc) {
+            result.wbtcBalance = wbtc.balance;
+        }
+    }
+    await delay(CONFIG.DELAY_MS);
+
+    // Get token transactions (for flow analysis and fallback balances)
     const tokRes = await etherscanCall('account', 'tokentx', { address, page: 1, offset: CONFIG.TOKEN_LIMIT, sort: 'desc' });
     if (tokRes.status === '1' && Array.isArray(tokRes.result)) {
         if (tokRes.result.length >= CONFIG.TOKEN_LIMIT) {
@@ -1985,17 +2116,43 @@ async function fetchEthWallet(address) {
         }
         result.tokens = tokRes.result;
         
-        // Check for WBTC
-        const wbtcTxs = tokRes.result.filter(t => t.contractAddress?.toLowerCase() === CONFIG.WBTC_ADDRESS);
-        if (wbtcTxs.length > 0) {
-            // Calculate WBTC balance from transfers
-            let wbtcBal = 0;
-            wbtcTxs.forEach(tx => {
-                const val = parseFloat(tx.value) / 1e8;
-                if (tx.to?.toLowerCase() === address.toLowerCase()) wbtcBal += val;
-                else wbtcBal -= val;
+        // If addresstokenbalance failed, calculate from transactions
+        if (result.tokenBalances.length === 0) {
+            const tokenMap = new Map();
+            tokRes.result.forEach(tx => {
+                const sym = tx.tokenSymbol?.toUpperCase() || 'UNKNOWN';
+                const dec = parseInt(tx.tokenDecimal) || 18;
+                const val = parseFloat(tx.value) / Math.pow(10, dec);
+                const key = `${sym}_${tx.contractAddress}`;
+                
+                if (!tokenMap.has(key)) {
+                    tokenMap.set(key, {
+                        symbol: sym,
+                        name: tx.tokenName || '',
+                        balance: 0,
+                        contractAddress: tx.contractAddress,
+                        decimals: dec
+                    });
+                }
+                
+                const token = tokenMap.get(key);
+                if (tx.to?.toLowerCase() === address.toLowerCase()) {
+                    token.balance += val;
+                } else {
+                    token.balance -= val;
+                }
             });
-            result.wbtcBalance = Math.max(0, wbtcBal);
+            
+            result.tokenBalances = [...tokenMap.values()]
+                .filter(t => t.balance > 0.0001);
+            
+            // Calculate WBTC from transactions if not set
+            if (result.wbtcBalance === 0) {
+                const wbtc = result.tokenBalances.find(t => 
+                    t.contractAddress?.toLowerCase() === CONFIG.WBTC_ADDRESS
+                );
+                if (wbtc) result.wbtcBalance = wbtc.balance;
+            }
         }
     }
     await delay(CONFIG.DELAY_MS);
@@ -2068,26 +2225,24 @@ function analyzeEthWallet(data, period) {
         }
     });
 
-    // Token aggregation with USD values
-    const tokenMap = new Map();
-    (data.tokens || []).forEach(t => {
-        const sym = t.tokenSymbol?.toUpperCase() || 'UNKNOWN';
-        const dec = parseInt(t.tokenDecimal) || 18;
-        const val = parseFloat(t.value) / Math.pow(10, dec);
-        
-        if (t.to?.toLowerCase() === addr) {
-            tokenMap.set(sym, (tokenMap.get(sym) || 0) + val);
-        } else {
-            tokenMap.set(sym, (tokenMap.get(sym) || 0) - val);
-        }
-    });
-
-    const tokens = [];
-    tokenMap.forEach((bal, sym) => {
-        if (bal > 0.0001) {
-            tokens.push({ symbol: sym, balance: bal, value: 0 }); // Value to be filled by price API if available
-        }
-    });
+    // Use actual token balances with prices
+    const tokens = (data.tokenBalances || []).map(t => {
+        const price = getTokenPrice(t.symbol);
+        return {
+            symbol: t.symbol,
+            name: t.name || t.symbol,
+            balance: t.balance,
+            value: t.balance * price,
+            price: price,
+            contractAddress: t.contractAddress
+        };
+    }).filter(t => t.balance > 0.0001);
+    
+    // Sort by USD value descending
+    tokens.sort((a, b) => b.value - a.value);
+    
+    // Calculate total token value
+    const totalTokenValue = tokens.reduce((sum, t) => sum + t.value, 0);
 
     // Find first tx for funding source
     const sortedTx = [...(data.rawTx || [])].sort((a, b) => parseInt(a.timeStamp) - parseInt(b.timeStamp));
@@ -2132,6 +2287,7 @@ function analyzeEthWallet(data, period) {
         totalTxCount: allTx.length,
         tokens,
         tokCount: tokens.length,
+        totalTokenValue,
         fundingSource,
         ageDays,
         lastAct: lastTx ? new Date(lastTx) : null,
@@ -2341,7 +2497,11 @@ async function addWalletsMobile() {
     renderWalletList();
     updateCounts();
     updateMobileWalletCount();
-    markNeedsRefresh();
+    
+    // Auto-refresh analysis when wallet is added
+    if (state.wallets.length > 0) {
+        await runAnalysis();
+    }
 }
 
 function updateMobileWalletCount() {
@@ -2398,7 +2558,11 @@ async function addWallets() {
     renderWalletList();
     updateCounts();
     updateMobileWalletCount();
-    markNeedsRefresh();
+    
+    // Auto-refresh analysis when wallet is added
+    if (state.wallets.length > 0) {
+        await runAnalysis();
+    }
 }
 
 function removeWallet(address) {
@@ -2579,6 +2743,23 @@ async function runAnalysis() {
         await delay(100);
     }
     
+    // Fetch token prices for all unique tokens
+    if (state.ethData.length > 0) {
+        updateLoading('Fetching token prices...');
+        const allSymbols = new Set();
+        state.ethData.forEach(w => {
+            (w.tokenBalances || []).forEach(t => {
+                allSymbols.add(t.symbol.toUpperCase());
+            });
+        });
+        await fetchTokenPrices([...allSymbols]);
+        
+        // Re-analyze with prices
+        state.ethData.forEach(w => {
+            w.analyzed = analyzeEthWallet(w, state.period);
+        });
+    }
+    
     hideLoading();
     clearNeedsRefresh();
     saveState();
@@ -2614,17 +2795,20 @@ function renderCombinedDashboard() {
     const btcUsd = btcTotal * state.btcPrice;
     const wbtcUsd = wbtcTotal * state.btcPrice;
     
-    // Stablecoin calculation
+    // Stablecoin calculation - use value which already has USD
     let stableUsd = 0;
+    let otherTokensUsd = 0;
     state.ethData.forEach(w => {
         (w.analyzed?.tokens || []).forEach(t => {
             if (CONFIG.STABLECOINS.includes(t.symbol.toLowerCase())) {
-                stableUsd += t.balance;
+                stableUsd += t.value || t.balance; // value has USD, fallback to balance for stables
+            } else {
+                otherTokensUsd += t.value || 0;
             }
         });
     });
     
-    const totalUsd = ethUsd + btcUsd + stableUsd;
+    const totalUsd = ethUsd + btcUsd + wbtcUsd + stableUsd + otherTokensUsd;
     
     // Net flow (ETH only since BTC API doesn't give timestamps)
     const netFlowEth = state.ethData.reduce((s, w) => s + (w.analyzed?.netFlow || 0), 0);
@@ -2678,8 +2862,8 @@ function renderCombinedDashboard() {
         </div>
     `;
     
-    // Allocation Chart
-    renderAllocationChart(ethUsd, btcUsd, stableUsd, totalUsd - ethUsd - btcUsd - stableUsd);
+    // Allocation Chart - now includes other tokens properly
+    renderAllocationChart(ethUsd, btcUsd + wbtcUsd, stableUsd, otherTokensUsd);
     
     // Chain Chart
     renderChainChart(ethUsd, btcUsd);
@@ -2697,19 +2881,22 @@ function renderEthDashboard() {
     
     // Calculate metrics
     const totalEth = state.ethData.reduce((s, w) => s + w.balance, 0);
-    const totalUsd = totalEth * state.ethPrice;
+    const ethUsd = totalEth * state.ethPrice;
     const totalTokens = new Set();
-    let stableBalance = 0;
+    let stableUsd = 0;
+    let totalTokenValue = 0;
     
     state.ethData.forEach(w => {
         (w.analyzed?.tokens || []).forEach(t => {
             totalTokens.add(t.symbol);
+            totalTokenValue += t.value || 0;
             if (CONFIG.STABLECOINS.includes(t.symbol.toLowerCase())) {
-                stableBalance += t.balance;
+                stableUsd += t.value || t.balance;
             }
         });
     });
     
+    const totalAum = ethUsd + totalTokenValue;
     const netFlow = state.ethData.reduce((s, w) => s + (w.analyzed?.netFlow || 0), 0);
     const totalTx = state.ethData.reduce((s, w) => s + (w.analyzed?.txCount || 0), 0);
     const totalGas = state.ethData.reduce((s, w) => s + (w.analyzed?.gasSpent || 0), 0);
@@ -2721,17 +2908,17 @@ function renderEthDashboard() {
         <div class="kpi-card">
             <div class="kpi-label">Total ETH</div>
             <div class="kpi-value eth">${fmtEth(totalEth)}</div>
-            <div class="kpi-sub">${fmtUsd(totalUsd)}</div>
+            <div class="kpi-sub">${fmtUsd(ethUsd)}</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Unique Tokens</div>
-            <div class="kpi-value">${totalTokens.size}</div>
-            <div class="kpi-sub">Across all wallets</div>
+            <div class="kpi-label">Token Holdings</div>
+            <div class="kpi-value gold">${fmtUsd(totalTokenValue)}</div>
+            <div class="kpi-sub">${totalTokens.size} unique tokens</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">Stablecoin Exposure</div>
-            <div class="kpi-value stable">${fmtUsd(stableBalance)}</div>
-            <div class="kpi-sub">${totalUsd > 0 ? ((stableBalance / totalUsd) * 100).toFixed(1) : 0}% of ETH AUM</div>
+            <div class="kpi-value stable">${fmtUsd(stableUsd)}</div>
+            <div class="kpi-sub">${totalAum > 0 ? ((stableUsd / totalAum) * 100).toFixed(1) : 0}% of AUM</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">WBTC Balance</div>
@@ -2765,6 +2952,7 @@ function renderEthDashboard() {
     renderBalanceDistChart();
     renderNetFlowChart();
     renderTopTokensChart();
+    renderTokenListTable();
     renderSegmentChart();
     renderHeatmap();
     renderLorenzChart();
@@ -3096,18 +3284,21 @@ function renderTopTokensChart() {
     const ctx = document.getElementById('topTokensChart');
     if (state.charts.tokens) state.charts.tokens.destroy();
     
-    // Aggregate tokens across all wallets
+    // Aggregate tokens across all wallets with USD values
     const tokenMap = new Map();
     state.ethData.forEach(w => {
         (w.analyzed?.tokens || []).forEach(t => {
-            const current = tokenMap.get(t.symbol) || 0;
-            tokenMap.set(t.symbol, current + t.balance);
+            const current = tokenMap.get(t.symbol) || { balance: 0, value: 0 };
+            tokenMap.set(t.symbol, {
+                balance: current.balance + t.balance,
+                value: current.value + t.value
+            });
         });
     });
     
-    // Sort and take top 10
+    // Sort by USD value and take top 10
     const sorted = [...tokenMap.entries()]
-        .sort((a, b) => b[1] - a[1])
+        .sort((a, b) => b[1].value - a[1].value)
         .slice(0, 10);
     
     state.charts.tokens = new Chart(ctx, {
@@ -3115,7 +3306,7 @@ function renderTopTokensChart() {
         data: {
             labels: sorted.map(s => s[0]),
             datasets: [{
-                data: sorted.map(s => s[1]),
+                data: sorted.map(s => s[1].value),
                 backgroundColor: chartColors.goldDim,
                 borderColor: chartColors.gold,
                 borderWidth: 1
@@ -3127,11 +3318,86 @@ function renderTopTokensChart() {
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    callbacks: { label: ctx => fmt(ctx.raw, 2) + ' ' + ctx.label }
+                    callbacks: { 
+                        label: ctx => {
+                            const token = sorted[ctx.dataIndex];
+                            return `${fmtUsd(token[1].value)} (${fmt(token[1].balance, 4)} ${token[0]})`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        callback: value => fmtUsd(value),
+                        color: '#A9ADB5',
+                        font: { size: 10 }
+                    },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                },
+                y: {
+                    ticks: { color: '#A9ADB5', font: { size: 10 } },
+                    grid: { display: false }
                 }
             }
         }
     });
+}
+
+function renderTokenListTable() {
+    const tbody = document.querySelector('#allTokensTable tbody');
+    if (!tbody) return;
+    
+    // Aggregate all tokens across wallets
+    const tokenMap = new Map();
+    state.ethData.forEach(w => {
+        (w.analyzed?.tokens || []).forEach(t => {
+            const key = t.symbol;
+            const current = tokenMap.get(key) || { 
+                symbol: t.symbol, 
+                name: t.name,
+                balance: 0, 
+                value: 0, 
+                price: t.price 
+            };
+            tokenMap.set(key, {
+                ...current,
+                balance: current.balance + t.balance,
+                value: current.value + t.value
+            });
+        });
+    });
+    
+    // Sort by USD value
+    const tokens = [...tokenMap.values()].sort((a, b) => b.value - a.value);
+    
+    // Calculate total for percentage
+    const totalValue = tokens.reduce((sum, t) => sum + t.value, 0);
+    
+    if (tokens.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                    No tokens found
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = tokens.map((t, i) => `
+        <tr>
+            <td>${i + 1}</td>
+            <td>
+                <div style="font-weight: 500;">${t.symbol}</div>
+                ${t.name && t.name !== t.symbol ? `<div style="font-size: 10px; color: var(--text-muted);">${t.name}</div>` : ''}
+            </td>
+            <td style="text-align: right; font-family: monospace;">${fmt(t.balance, t.balance < 1 ? 6 : 2)}</td>
+            <td style="text-align: right; color: var(--text-muted);">${t.price > 0 ? fmtUsd(t.price) : '—'}</td>
+            <td style="text-align: right; font-weight: 500; color: ${t.value > 0 ? 'var(--gold)' : 'var(--text-muted)'};">${t.value > 0 ? fmtUsd(t.value) : '—'}</td>
+            <td style="text-align: right; color: var(--text-muted);">${totalValue > 0 ? ((t.value / totalValue) * 100).toFixed(1) + '%' : '—'}</td>
+        </tr>
+    `).join('');
 }
 
 function renderSegmentChart() {
