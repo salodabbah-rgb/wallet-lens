@@ -2148,12 +2148,17 @@ async function fetchEthWallet(address) {
 
 async function fetchBtcWallet(address) {
     try {
+        console.log('Fetching BTC wallet:', address);
         const res = await fetch(`${CONFIG.BLOCKSTREAM_API}/address/${address}`);
         const data = await res.json();
+        
+        console.log('BTC API response:', JSON.stringify(data));
         
         const funded = data.chain_stats?.funded_txo_sum || 0;
         const spent = data.chain_stats?.spent_txo_sum || 0;
         const balance = satToBtc(funded - spent);
+        
+        console.log('BTC funded:', funded, 'spent:', spent, 'balance:', balance);
         
         return {
             address,
