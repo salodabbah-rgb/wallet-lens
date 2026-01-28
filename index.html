@@ -1818,11 +1818,11 @@
 // ============================================
 const CONFIG = {
     ETHERSCAN_API: 'https://api.etherscan.io/api',
-    ETHERSCAN_KEY: 'YourApiKeyToken', // Will be replaced by server
+    ETHERSCAN_KEY: 'YourEtherscanApiKey', // Get free key at etherscan.io/apis
     BLOCKSTREAM_API: 'https://blockstream.info/api',
     COINGECKO_API: 'https://api.coingecko.com/api/v3',
     DEFAULT_DAYS: 180, // 6 months
-    DELAY_MS: 250,
+    DELAY_MS: 300,
     STABLECOINS: ['usdt', 'usdc', 'dai', 'busd', 'tusd', 'frax', 'lusd'],
     TOKEN_IDS: {
         'USDT': 'tether', 'USDC': 'usd-coin', 'DAI': 'dai', 'WETH': 'weth',
@@ -1860,7 +1860,20 @@ let state = {
 // UTILITIES
 // ============================================
 const delay = ms => new Promise(r => setTimeout(r, ms));
-const weiToEth = wei => parseFloat(wei) / 1e18;
+
+function weiToEth(wei) {
+    if (!wei) return 0;
+    // Handle large numbers by using string manipulation
+    const weiStr = wei.toString();
+    if (weiStr.length <= 18) {
+        return parseFloat(weiStr) / 1e18;
+    }
+    // For large numbers, split into eth and decimal parts
+    const ethPart = weiStr.slice(0, -18) || '0';
+    const decPart = weiStr.slice(-18).padStart(18, '0');
+    return parseFloat(ethPart + '.' + decPart);
+}
+
 const satToBtc = sat => sat / 1e8;
 const shorten = (s, start = 6, end = 4) => s ? `${s.slice(0, start)}...${s.slice(-end)}` : '';
 const fmt = (n, d = 2) => n?.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) || '0';
@@ -1924,16 +1937,25 @@ async function etherscanFetch(params) {
     url.searchParams.set('apikey', CONFIG.ETHERSCAN_KEY);
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
     
+    console.log('Etherscan request:', params.action, params.address?.slice(0, 10));
+    
     try {
         const res = await fetch(url);
         const data = await res.json();
-        if (data.status === '1' || data.message === 'OK') {
+        
+        console.log('Etherscan response:', params.action, data.status, data.message);
+        
+        if (data.status === '1') {
             return data.result;
         }
-        console.warn('Etherscan response:', data.message);
+        if (data.message === 'OK' || data.message === 'No transactions found') {
+            return data.result || [];
+        }
+        
+        console.warn('Etherscan error:', data.message, data.result);
         return null;
     } catch (e) {
-        console.error('Etherscan error:', e);
+        console.error('Etherscan fetch error:', e);
         return null;
     }
 }
@@ -2005,13 +2027,17 @@ async function fetchEthWallet(address) {
         address,
         tag: 'latest'
     });
-    if (balance) {
+    
+    console.log('Raw balance response:', balance);
+    
+    if (balance !== null && balance !== undefined) {
         result.balance = weiToEth(balance);
         result.balanceUsd = result.balance * state.prices.eth;
+        console.log('Parsed balance:', result.balance, 'ETH, USD:', result.balanceUsd);
     }
     await delay(CONFIG.DELAY_MS);
 
-    // 2. Get normal transactions
+    // 2. Get normal transactions (ALL, then filter by period for metrics)
     const txList = await etherscanFetch({
         module: 'account',
         action: 'txlist',
@@ -2021,15 +2047,29 @@ async function fetchEthWallet(address) {
         sort: 'desc'
     });
     
+    console.log('Transactions found:', txList?.length || 0);
+    
     if (txList && Array.isArray(txList)) {
         const addrLower = address.toLowerCase();
         
         txList.forEach(tx => {
             const timestamp = parseInt(tx.timeStamp);
+            
+            // Store all transactions for heatmap
+            result.transactions.push({
+                timestamp,
+                value: weiToEth(tx.value),
+                from: tx.from,
+                to: tx.to,
+                type: 'normal'
+            });
+            
+            // Only count inflow/outflow for selected period
             if (cutoff > 0 && timestamp < cutoff) return;
             
             const value = weiToEth(tx.value);
-            const gasUsed = tx.gasUsed ? weiToEth(BigInt(tx.gasUsed) * BigInt(tx.gasPrice || 0)) : 0;
+            const gasUsed = tx.gasUsed && tx.gasPrice ? 
+                weiToEth(BigInt(tx.gasUsed) * BigInt(tx.gasPrice)) : 0;
             
             if (tx.to?.toLowerCase() === addrLower) {
                 result.inflow += value;
@@ -2038,21 +2078,17 @@ async function fetchEthWallet(address) {
                 result.outflow += value;
                 result.gasSpent += gasUsed;
             }
-            
-            result.transactions.push({
-                timestamp,
-                value,
-                from: tx.from,
-                to: tx.to,
-                type: 'normal'
-            });
         });
         
-        result.txCount = result.transactions.length;
+        // txCount is for the period
+        result.txCount = txList.filter(tx => {
+            if (cutoff === 0) return true;
+            return parseInt(tx.timeStamp) >= cutoff;
+        }).length;
     }
     await delay(CONFIG.DELAY_MS);
 
-    // 3. Get token balances
+    // 3. Get token transfers (ALL, to calculate current balances)
     const tokenTx = await etherscanFetch({
         module: 'account',
         action: 'tokentx',
@@ -2061,6 +2097,8 @@ async function fetchEthWallet(address) {
         endblock: 99999999,
         sort: 'desc'
     });
+    
+    console.log('Token transfers found:', tokenTx?.length || 0);
     
     if (tokenTx && Array.isArray(tokenTx)) {
         const tokenMap = new Map();
@@ -2098,6 +2136,8 @@ async function fetchEthWallet(address) {
                 valueUsd: t.balance * (state.prices.tokens[t.symbol] || 0)
             }))
             .sort((a, b) => b.valueUsd - a.valueUsd);
+        
+        console.log('Tokens with balance:', result.tokens.length);
     }
 
     return result;

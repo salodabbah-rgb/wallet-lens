@@ -19,8 +19,8 @@ app.get('/', (req, res) => {
     let html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
     
     // Inject API keys from environment
-    const etherscanKey = process.env.ETHERSCAN_KEY || 'YourApiKeyToken';
-    html = html.replace("ETHERSCAN_KEY: 'YourApiKeyToken'", `ETHERSCAN_KEY: '${etherscanKey}'`);
+    const etherscanKey = process.env.ETHERSCAN_KEY || 'YourEtherscanApiKey';
+    html = html.replace("ETHERSCAN_KEY: 'YourEtherscanApiKey'", `ETHERSCAN_KEY: '${etherscanKey}'`);
     
     res.send(html);
 });
