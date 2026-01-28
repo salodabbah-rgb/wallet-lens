@@ -1804,9 +1804,9 @@ const CONFIG = {
     BLOCKSTREAM_API: 'https://blockstream.info/api',
     COINGECKO_API: 'https://api.coingecko.com/api/v3/simple/price',
     COINGECKO_TOKEN_API: 'https://api.coingecko.com/api/v3/simple/token_price/ethereum',
-    DELAY_MS: 250,
-    TX_LIMIT: 1000,
-    TOKEN_LIMIT: 100,
+    DELAY_MS: 350,
+    TX_LIMIT: 10000,
+    TOKEN_LIMIT: 10000,
     STABLECOINS: ['usdt', 'usdc', 'dai', 'busd', 'tusd', 'usdp', 'frax', 'lusd', 'usdd', 'gusd'],
     // Map of common token symbols to CoinGecko IDs
     TOKEN_IDS: {
@@ -2087,73 +2087,49 @@ async function fetchEthWallet(address) {
     }
     await delay(CONFIG.DELAY_MS);
 
-    // Try to get actual token balances using addresstokenbalance
-    const tokenBalRes = await etherscanCall('account', 'addresstokenbalance', { address, page: 1, offset: 100 });
-    if (tokenBalRes.status === '1' && Array.isArray(tokenBalRes.result)) {
-        result.tokenBalances = tokenBalRes.result.map(t => ({
-            symbol: t.TokenSymbol || 'UNKNOWN',
-            name: t.TokenName || '',
-            balance: parseFloat(t.TokenQuantity) || 0,
-            contractAddress: t.TokenAddress,
-            decimals: parseInt(t.TokenDivisor) || 18
-        })).filter(t => t.balance > 0);
-        
-        // Get WBTC balance from token balances
-        const wbtc = result.tokenBalances.find(t => 
-            t.contractAddress?.toLowerCase() === CONFIG.WBTC_ADDRESS
-        );
-        if (wbtc) {
-            result.wbtcBalance = wbtc.balance;
-        }
-    }
-    await delay(CONFIG.DELAY_MS);
-
-    // Get token transactions (for flow analysis and fallback balances)
+    // Get token transactions (for balances and flow analysis)
     const tokRes = await etherscanCall('account', 'tokentx', { address, page: 1, offset: CONFIG.TOKEN_LIMIT, sort: 'desc' });
     if (tokRes.status === '1' && Array.isArray(tokRes.result)) {
         if (tokRes.result.length >= CONFIG.TOKEN_LIMIT) {
-            addWarning(`Token limit reached for ${shorten(address)}`, 'Some tokens may be missing.');
+            console.warn(`Token tx limit reached for ${shorten(address)}`);
         }
         result.tokens = tokRes.result;
         
-        // If addresstokenbalance failed, calculate from transactions
-        if (result.tokenBalances.length === 0) {
-            const tokenMap = new Map();
-            tokRes.result.forEach(tx => {
-                const sym = tx.tokenSymbol?.toUpperCase() || 'UNKNOWN';
-                const dec = parseInt(tx.tokenDecimal) || 18;
-                const val = parseFloat(tx.value) / Math.pow(10, dec);
-                const key = `${sym}_${tx.contractAddress}`;
-                
-                if (!tokenMap.has(key)) {
-                    tokenMap.set(key, {
-                        symbol: sym,
-                        name: tx.tokenName || '',
-                        balance: 0,
-                        contractAddress: tx.contractAddress,
-                        decimals: dec
-                    });
-                }
-                
-                const token = tokenMap.get(key);
-                if (tx.to?.toLowerCase() === address.toLowerCase()) {
-                    token.balance += val;
-                } else {
-                    token.balance -= val;
-                }
-            });
+        // Calculate token balances from transactions
+        const tokenMap = new Map();
+        tokRes.result.forEach(tx => {
+            const sym = tx.tokenSymbol?.toUpperCase() || 'UNKNOWN';
+            const dec = parseInt(tx.tokenDecimal) || 18;
+            const val = parseFloat(tx.value) / Math.pow(10, dec);
+            const contract = tx.contractAddress?.toLowerCase();
+            const key = `${sym}_${contract}`;
             
-            result.tokenBalances = [...tokenMap.values()]
-                .filter(t => t.balance > 0.0001);
-            
-            // Calculate WBTC from transactions if not set
-            if (result.wbtcBalance === 0) {
-                const wbtc = result.tokenBalances.find(t => 
-                    t.contractAddress?.toLowerCase() === CONFIG.WBTC_ADDRESS
-                );
-                if (wbtc) result.wbtcBalance = wbtc.balance;
+            if (!tokenMap.has(key)) {
+                tokenMap.set(key, {
+                    symbol: sym,
+                    name: tx.tokenName || '',
+                    balance: 0,
+                    contractAddress: contract,
+                    decimals: dec
+                });
             }
-        }
+            
+            const token = tokenMap.get(key);
+            if (tx.to?.toLowerCase() === address.toLowerCase()) {
+                token.balance += val;
+            } else if (tx.from?.toLowerCase() === address.toLowerCase()) {
+                token.balance -= val;
+            }
+        });
+        
+        result.tokenBalances = [...tokenMap.values()]
+            .filter(t => t.balance > 0.0001);
+        
+        // Get WBTC balance
+        const wbtc = result.tokenBalances.find(t => 
+            t.contractAddress === CONFIG.WBTC_ADDRESS.toLowerCase()
+        );
+        if (wbtc) result.wbtcBalance = wbtc.balance;
     }
     await delay(CONFIG.DELAY_MS);
 
@@ -2161,7 +2137,7 @@ async function fetchEthWallet(address) {
     const txRes = await etherscanCall('account', 'txlist', { address, page: 1, offset: CONFIG.TX_LIMIT, sort: 'desc' });
     if (txRes.status === '1' && Array.isArray(txRes.result)) {
         if (txRes.result.length >= CONFIG.TX_LIMIT) {
-            addWarning(`Transaction limit reached for ${shorten(address)}`, 'Volume calculations may be incomplete.');
+            console.warn(`Tx limit reached for ${shorten(address)}`);
         }
         result.rawTx = txRes.result;
     }
