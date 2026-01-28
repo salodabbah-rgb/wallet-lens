@@ -1461,6 +1461,9 @@
                             <button class="setting-chip active" data-stat="combined-kpis" onclick="toggleStat('combined-kpis')">
                                 <span class="chip-check">✓</span> KPIs
                             </button>
+                            <button class="setting-chip active" data-stat="combined-holdings" onclick="toggleStat('combined-holdings')">
+                                <span class="chip-check">✓</span> Holdings List
+                            </button>
                             <button class="setting-chip active" data-stat="combined-allocation" onclick="toggleStat('combined-allocation')">
                                 <span class="chip-check">✓</span> Portfolio Allocation
                             </button>
@@ -1532,6 +1535,28 @@
                     <!-- KPIs -->
                     <div id="combined-kpis-section">
                         <div class="kpi-grid" id="combinedKpis"></div>
+                    </div>
+                    <!-- Holdings Summary -->
+                    <div id="combined-holdings-section" class="chart-grid" style="margin-bottom: 24px;">
+                        <div class="chart-card full">
+                            <div class="chart-header">
+                                <div class="chart-title">All Holdings</div>
+                                <div class="chart-subtitle">Complete balance breakdown</div>
+                            </div>
+                            <div class="table-container">
+                                <table id="holdingsSummaryTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Asset</th>
+                                            <th style="text-align: right;">Balance</th>
+                                            <th style="text-align: right;">Price</th>
+                                            <th style="text-align: right;">Value (USD)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                     <!-- Allocation Chart -->
                     <div id="combined-allocation-section" class="chart-grid" style="margin-bottom: 24px;">
@@ -1847,7 +1872,7 @@ let state = {
     period: CONFIG.DEFAULT_DAYS,
     segment: 'combined',
     visibleStats: {
-        'combined-kpis': true, 'combined-allocation': true, 'combined-flow': true,
+        'combined-kpis': true, 'combined-holdings': true, 'combined-allocation': true, 'combined-flow': true,
         'eth-kpis': true, 'eth-aum': true, 'eth-distribution': true, 'eth-flow': true,
         'eth-tokens': true, 'eth-tokenlist': true, 'eth-segments': true, 'eth-heatmap': true,
         'eth-lorenz': true, 'eth-tables': true,
@@ -2624,6 +2649,7 @@ function renderCombinedDashboard() {
     
     renderAllocationChart(ethUsd, btcUsd, stableUsd, otherTokensUsd);
     renderCombinedFlowChart();
+    renderHoldingsSummary();
 }
 
 function renderEthDashboard() {
@@ -2846,6 +2872,91 @@ function renderCombinedFlowChart() {
             }
         }
     });
+}
+
+function renderHoldingsSummary() {
+    const tbody = document.querySelector('#holdingsSummaryTable tbody');
+    if (!tbody) return;
+    
+    const holdings = [];
+    
+    // Add BTC
+    const btcTotal = state.btcData.reduce((s, w) => s + w.balance, 0);
+    if (btcTotal > 0) {
+        holdings.push({
+            asset: 'BTC',
+            name: 'Bitcoin',
+            balance: btcTotal,
+            balanceDisplay: fmtBtc(btcTotal),
+            price: state.prices.btc,
+            valueUsd: btcTotal * state.prices.btc,
+            color: 'var(--btc-color)'
+        });
+    }
+    
+    // Add ETH
+    const ethTotal = state.ethData.reduce((s, w) => s + w.balance, 0);
+    if (ethTotal > 0) {
+        holdings.push({
+            asset: 'ETH',
+            name: 'Ethereum',
+            balance: ethTotal,
+            balanceDisplay: fmtEth(ethTotal),
+            price: state.prices.eth,
+            valueUsd: ethTotal * state.prices.eth,
+            color: 'var(--eth-color)'
+        });
+    }
+    
+    // Aggregate all tokens across wallets
+    const tokenMap = new Map();
+    state.ethData.forEach(w => {
+        (w.tokens || []).forEach(t => {
+            const existing = tokenMap.get(t.symbol) || { ...t, balance: 0, valueUsd: 0 };
+            existing.balance += t.balance;
+            existing.valueUsd += t.valueUsd || 0;
+            existing.price = t.price || 0;
+            tokenMap.set(t.symbol, existing);
+        });
+    });
+    
+    // Add tokens to holdings
+    tokenMap.forEach((t, symbol) => {
+        if (t.balance > 0.0001) {
+            const isStable = CONFIG.STABLECOINS.includes(symbol.toLowerCase());
+            holdings.push({
+                asset: symbol,
+                name: t.name || symbol,
+                balance: t.balance,
+                balanceDisplay: fmt(t.balance, t.balance < 1 ? 6 : 2) + ' ' + symbol,
+                price: t.price || (isStable ? 1 : 0),
+                valueUsd: t.valueUsd || (isStable ? t.balance : 0),
+                color: isStable ? 'var(--stable-color)' : 'var(--gold)'
+            });
+        }
+    });
+    
+    // Sort by USD value
+    holdings.sort((a, b) => b.valueUsd - a.valueUsd);
+    
+    if (holdings.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:24px;">No holdings found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = holdings.map(h => `
+        <tr>
+            <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="color:${h.color};font-weight:600;">${h.asset}</span>
+                    <span style="color:var(--text-muted);font-size:11px;">${h.name !== h.asset ? h.name : ''}</span>
+                </div>
+            </td>
+            <td style="text-align:right;font-family:monospace;">${h.balanceDisplay}</td>
+            <td style="text-align:right;color:var(--text-muted);">${h.price > 0 ? fmtUsd(h.price) : '—'}</td>
+            <td style="text-align:right;font-weight:600;color:${h.color};">${h.valueUsd > 0 ? fmtUsd(h.valueUsd) : '—'}</td>
+        </tr>
+    `).join('');
 }
 
 function renderAumChart() {
