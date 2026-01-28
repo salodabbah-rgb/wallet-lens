@@ -1817,7 +1817,8 @@
 // CONFIGURATION
 // ============================================
 const CONFIG = {
-    ETHERSCAN_API: 'https://api.etherscan.io/api',
+    ETHERSCAN_API: 'https://api.etherscan.io/v2/api',
+    ETHERSCAN_CHAINID: '1', // Ethereum mainnet
     ETHERSCAN_KEY: 'YourEtherscanApiKey', // Get free key at etherscan.io/apis
     BLOCKSTREAM_API: 'https://blockstream.info/api',
     COINGECKO_API: 'https://api.coingecko.com/api/v3',
@@ -1934,6 +1935,7 @@ function loadState() {
 // ============================================
 async function etherscanFetch(params) {
     const url = new URL(CONFIG.ETHERSCAN_API);
+    url.searchParams.set('chainid', CONFIG.ETHERSCAN_CHAINID);
     url.searchParams.set('apikey', CONFIG.ETHERSCAN_KEY);
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
     
