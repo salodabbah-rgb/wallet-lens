@@ -2039,7 +2039,61 @@ async function fetchEthWallet(address) {
     }
     await delay(CONFIG.DELAY_MS);
 
-    // 2. Get normal transactions (ALL, then filter by period for metrics)
+    // 2. Get token balances using tokenbalance for known stablecoins
+    const stableTokens = {
+        'USDT': { contract: '0xdAC17F958D2ee523a2206206994597C13D831ec7', decimals: 6 },
+        'USDC': { contract: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6 },
+        'DAI': { contract: '0x6B175474E89094C44Da98b954EedeAC495271d0F', decimals: 18 }
+    };
+    
+    // Also check common tokens
+    const commonTokens = {
+        ...stableTokens,
+        'WETH': { contract: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', decimals: 18 },
+        'WBTC': { contract: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599', decimals: 8 },
+        'LINK': { contract: '0x514910771AF9Ca656af840dff83E8264EcF986CA', decimals: 18 },
+        'UNI': { contract: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', decimals: 18 },
+        'SHIB': { contract: '0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE', decimals: 18 },
+        'PEPE': { contract: '0x6982508145454Ce325dDbE47a25d4ec3d2311933', decimals: 18 },
+        'STETH': { contract: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84', decimals: 18 },
+        'LDO': { contract: '0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32', decimals: 18 },
+        'AAVE': { contract: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9', decimals: 18 },
+        'MKR': { contract: '0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2', decimals: 18 },
+        'ENS': { contract: '0xC18360217D8F7Ab5e7c516566761Ea12Ce7F9D72', decimals: 18 }
+    };
+    
+    for (const [symbol, info] of Object.entries(commonTokens)) {
+        const tokenBal = await etherscanFetch({
+            module: 'account',
+            action: 'tokenbalance',
+            contractaddress: info.contract,
+            address,
+            tag: 'latest'
+        });
+        
+        if (tokenBal && tokenBal !== '0') {
+            const bal = parseFloat(tokenBal) / Math.pow(10, info.decimals);
+            if (bal > 0.0001) {
+                const price = state.prices.tokens[symbol] || (CONFIG.STABLECOINS.includes(symbol.toLowerCase()) ? 1 : 0);
+                result.tokens.push({
+                    symbol,
+                    name: symbol,
+                    balance: bal,
+                    contract: info.contract,
+                    price,
+                    valueUsd: bal * price
+                });
+                console.log(`Token ${symbol}: ${bal} = $${bal * price}`);
+            }
+        }
+        await delay(150); // Smaller delay for token checks
+    }
+    
+    // Sort by USD value
+    result.tokens.sort((a, b) => b.valueUsd - a.valueUsd);
+    await delay(CONFIG.DELAY_MS);
+
+    // 3. Get normal transactions for flow analysis
     const txList = await etherscanFetch({
         module: 'account',
         action: 'txlist',
@@ -2087,59 +2141,6 @@ async function fetchEthWallet(address) {
             if (cutoff === 0) return true;
             return parseInt(tx.timeStamp) >= cutoff;
         }).length;
-    }
-    await delay(CONFIG.DELAY_MS);
-
-    // 3. Get token transfers (ALL, to calculate current balances)
-    const tokenTx = await etherscanFetch({
-        module: 'account',
-        action: 'tokentx',
-        address,
-        startblock: 0,
-        endblock: 99999999,
-        sort: 'desc'
-    });
-    
-    console.log('Token transfers found:', tokenTx?.length || 0);
-    
-    if (tokenTx && Array.isArray(tokenTx)) {
-        const tokenMap = new Map();
-        const addrLower = address.toLowerCase();
-        
-        tokenTx.forEach(tx => {
-            const symbol = (tx.tokenSymbol || 'UNKNOWN').toUpperCase();
-            const decimals = parseInt(tx.tokenDecimal) || 18;
-            const value = parseFloat(tx.value) / Math.pow(10, decimals);
-            const contract = tx.contractAddress?.toLowerCase();
-            
-            if (!tokenMap.has(symbol)) {
-                tokenMap.set(symbol, {
-                    symbol,
-                    name: tx.tokenName || symbol,
-                    balance: 0,
-                    contract
-                });
-            }
-            
-            const token = tokenMap.get(symbol);
-            if (tx.to?.toLowerCase() === addrLower) {
-                token.balance += value;
-            } else if (tx.from?.toLowerCase() === addrLower) {
-                token.balance -= value;
-            }
-        });
-        
-        // Filter positive balances and add USD values
-        result.tokens = [...tokenMap.values()]
-            .filter(t => t.balance > 0.0001)
-            .map(t => ({
-                ...t,
-                price: state.prices.tokens[t.symbol] || 0,
-                valueUsd: t.balance * (state.prices.tokens[t.symbol] || 0)
-            }))
-            .sort((a, b) => b.valueUsd - a.valueUsd);
-        
-        console.log('Tokens with balance:', result.tokens.length);
     }
 
     return result;
