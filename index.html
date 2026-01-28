@@ -844,10 +844,26 @@
         }
 
         .heatmap-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 550px;
+        }
+
+        .heatmap-row {
             display: grid;
             grid-template-columns: 40px repeat(24, 1fr);
             gap: 2px;
-            min-width: 550px;
+        }
+
+        .heatmap-header {
+            margin-bottom: 4px;
+        }
+
+        .heatmap-hour {
+            font-size: 8px;
+            color: var(--text-muted);
+            text-align: center;
         }
 
         .heatmap-label {
@@ -855,14 +871,16 @@
             color: var(--text-muted);
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-end;
+            padding-right: 6px;
         }
 
         .heatmap-cell {
             aspect-ratio: 1;
-            background: var(--bg-input);
+            background: rgba(255,255,255,0.03);
             border-radius: 2px;
             min-width: 14px;
+            min-height: 14px;
         }
 
         .heatmap-cell.l1 { background: rgba(184, 164, 90, 0.2); }
@@ -1424,8 +1442,9 @@
                             <button class="dropdown-item" data-period="7" onclick="setPeriod(7)">7 Days</button>
                             <button class="dropdown-item" data-period="30" onclick="setPeriod(30)">30 Days</button>
                             <button class="dropdown-item" data-period="90" onclick="setPeriod(90)">90 Days</button>
+                            <button class="dropdown-item active" data-period="180" onclick="setPeriod(180)">6 Months</button>
                             <button class="dropdown-item" data-period="365" onclick="setPeriod(365)">1 Year</button>
-                            <button class="dropdown-item active" data-period="0" onclick="setPeriod(0)">All Time</button>
+                            <button class="dropdown-item" data-period="0" onclick="setPeriod(0)">All Time</button>
                         </div>
                     </div>
                     <button class="btn-icon" id="refreshBtn" onclick="runAnalysis()" title="Refresh Analysis">↻</button>
@@ -1798,72 +1817,22 @@
 // CONFIGURATION
 // ============================================
 const CONFIG = {
-    ETHERSCAN_API: 'https://api.etherscan.io/v2/api',
-    CHAINID: '1',
-    ETHERSCAN_KEY: 'Y73RUTA4VPZYAZH23U8H3KZ1A37Z3C5CJZ',
+    ETHERSCAN_API: 'https://api.etherscan.io/api',
+    ETHERSCAN_KEY: 'YourApiKeyToken', // Will be replaced by server
     BLOCKSTREAM_API: 'https://blockstream.info/api',
-    COINGECKO_API: 'https://api.coingecko.com/api/v3/simple/price',
-    COINGECKO_TOKEN_API: 'https://api.coingecko.com/api/v3/simple/token_price/ethereum',
-    DELAY_MS: 350,
-    TX_LIMIT: 10000,
-    TOKEN_LIMIT: 10000,
-    STABLECOINS: ['usdt', 'usdc', 'dai', 'busd', 'tusd', 'usdp', 'frax', 'lusd', 'usdd', 'gusd'],
-    // Map of common token symbols to CoinGecko IDs
+    COINGECKO_API: 'https://api.coingecko.com/api/v3',
+    DEFAULT_DAYS: 180, // 6 months
+    DELAY_MS: 250,
+    STABLECOINS: ['usdt', 'usdc', 'dai', 'busd', 'tusd', 'frax', 'lusd'],
     TOKEN_IDS: {
-        'USDT': 'tether',
-        'USDC': 'usd-coin',
-        'DAI': 'dai',
-        'WETH': 'weth',
-        'WBTC': 'wrapped-bitcoin',
-        'LINK': 'chainlink',
-        'UNI': 'uniswap',
-        'AAVE': 'aave',
-        'MKR': 'maker',
-        'SNX': 'havven',
-        'COMP': 'compound-governance-token',
-        'CRV': 'curve-dao-token',
-        'LDO': 'lido-dao',
-        'SHIB': 'shiba-inu',
-        'PEPE': 'pepe',
-        'APE': 'apecoin',
-        'SAND': 'the-sandbox',
-        'MANA': 'decentraland',
-        'GRT': 'the-graph',
-        'ENS': 'ethereum-name-service',
-        'MATIC': 'matic-network',
-        'STETH': 'staked-ether',
-        'RETH': 'rocket-pool-eth',
-        'CBETH': 'coinbase-wrapped-staked-eth',
-        'FRAX': 'frax',
-        'LUSD': 'liquity-usd',
-        'BUSD': 'binance-usd',
-        'TUSD': 'true-usd',
-        'FXS': 'frax-share',
-        'RPL': 'rocket-pool',
-        '1INCH': '1inch',
-        'SUSHI': 'sushi',
-        'YFI': 'yearn-finance',
-        'BAL': 'balancer',
-        'DYDX': 'dydx',
-        'IMX': 'immutable-x',
-        'ARB': 'arbitrum',
-        'OP': 'optimism',
-        'BLUR': 'blur',
-        'WLD': 'worldcoin-wld',
-        'BONK': 'bonk'
-    },
-    DEFI_PROTOCOLS: {
-        '0x7a250d5630b4cf539739df2c5dacb4c659f2488d': 'Uniswap V2',
-        '0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45': 'Uniswap V3',
-        '0xe592427a0aece92de3edee1f18e0157c05861564': 'Uniswap V3',
-        '0xdef1c0ded9bec7f1a1670819833240f027b25eff': '0x Protocol',
-        '0x1111111254fb6c44bac0bed2854e76f90643097d': '1inch',
-        '0x881d40237659c251811cec9c364ef91dc08d300c': 'MetaMask',
-        '0x7d2768de32b0b80b7a3454c06bdac94a69ddc7a9': 'Aave V2',
-        '0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2': 'Aave V3',
-        '0xae7ab96520de3a18e5e111b5eaab095312d7fe84': 'Lido',
-    },
-    WBTC_ADDRESS: '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599'
+        'USDT': 'tether', 'USDC': 'usd-coin', 'DAI': 'dai', 'WETH': 'weth',
+        'WBTC': 'wrapped-bitcoin', 'LINK': 'chainlink', 'UNI': 'uniswap',
+        'AAVE': 'aave', 'MKR': 'maker', 'LDO': 'lido-dao', 'SHIB': 'shiba-inu',
+        'PEPE': 'pepe', 'ARB': 'arbitrum', 'OP': 'optimism', 'MATIC': 'matic-network',
+        'STETH': 'staked-ether', 'RETH': 'rocket-pool-eth', 'CRV': 'curve-dao-token',
+        'ENS': 'ethereum-name-service', 'GRT': 'the-graph', 'SNX': 'havven',
+        'COMP': 'compound-governance-token', 'SUSHI': 'sushi', 'YFI': 'yearn-finance'
+    }
 };
 
 // ============================================
@@ -1873,282 +1842,263 @@ let state = {
     wallets: [],
     ethData: [],
     btcData: [],
-    ethPrice: 0,
-    btcPrice: 0,
-    tokenPrices: {}, // Cache for token prices { symbol: priceUsd }
+    prices: { eth: 0, btc: 0, tokens: {} },
+    period: CONFIG.DEFAULT_DAYS,
     segment: 'combined',
-    period: 0,
     visibleStats: {
-        'combined-kpis': true,
-        'combined-allocation': true,
-        'combined-flow': true,
-        'eth-kpis': true,
-        'eth-aum': true,
-        'eth-distribution': true,
-        'eth-flow': true,
-        'eth-tokens': true,
-        'eth-tokenlist': true,
-        'eth-segments': true,
-        'eth-heatmap': true,
-        'eth-lorenz': true,
-        'eth-tables': true,
-        'btc-kpis': true,
-        'btc-distribution': true,
-        'btc-flow': true,
-        'btc-table': true
+        'combined-kpis': true, 'combined-allocation': true, 'combined-flow': true,
+        'eth-kpis': true, 'eth-aum': true, 'eth-distribution': true, 'eth-flow': true,
+        'eth-tokens': true, 'eth-tokenlist': true, 'eth-segments': true, 'eth-heatmap': true,
+        'eth-lorenz': true, 'eth-tables': true,
+        'btc-kpis': true, 'btc-distribution': true, 'btc-flow': true, 'btc-table': true
     },
-    ethTableSort: { col: 'value', asc: false },
     charts: {},
-    needsRefresh: false,
-    warnings: []
+    loading: false
 };
 
 // ============================================
 // UTILITIES
 // ============================================
 const delay = ms => new Promise(r => setTimeout(r, ms));
-const weiToEth = w => (!w || w === '0') ? 0 : parseFloat(w) / 1e18;
-const satToBtc = s => (!s || s === 0) ? 0 : s / 1e8;
-const shorten = (a, n = 6, m = 4) => a ? `${a.slice(0, n)}...${a.slice(-m)}` : '';
-
-const fmt = (n, d = 4) => {
-    if (n === undefined || n === null || isNaN(n)) return '0';
-    if (n === 0) return '0';
-    if (Math.abs(n) < 0.0001) return n < 0 ? '<-0.0001' : '<0.0001';
-    if (Math.abs(n) >= 1e9) return (n / 1e9).toFixed(2) + 'B';
-    if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(2) + 'M';
-    if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(2) + 'K';
-    return parseFloat(n.toFixed(d)).toLocaleString();
-};
-
+const weiToEth = wei => parseFloat(wei) / 1e18;
+const satToBtc = sat => sat / 1e8;
+const shorten = (s, start = 6, end = 4) => s ? `${s.slice(0, start)}...${s.slice(-end)}` : '';
+const fmt = (n, d = 2) => n?.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) || '0';
 const fmtUsd = n => '$' + fmt(n, 2);
 const fmtEth = n => fmt(n, 4) + ' ETH';
 const fmtBtc = n => fmt(n, 6) + ' BTC';
 
-const fmtAge = days => {
-    if (days >= 365) {
-        const y = Math.floor(days / 365);
-        const m = Math.floor((days % 365) / 30);
-        return y + 'y' + (m > 0 ? ' ' + m + 'm' : '');
-    }
-    if (days >= 30) {
-        const m = Math.floor(days / 30);
-        const d = Math.floor(days % 30);
-        return m + 'm' + (d > 0 ? ' ' + d + 'd' : '');
-    }
-    return Math.floor(days) + 'd';
-};
+function isEthAddress(addr) {
+    return /^0x[a-fA-F0-9]{40}$/.test(addr);
+}
 
-const isEthAddress = a => /^0x[a-fA-F0-9]{40}$/.test(a?.trim());
-const isENS = a => /^[a-zA-Z0-9][a-zA-Z0-9-]*\.eth$/i.test(a?.trim());
-const isBtcAddress = a => /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(a?.trim());
+function isBtcAddress(addr) {
+    return /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(addr);
+}
 
-const detectChain = addr => {
-    if (isEthAddress(addr) || isENS(addr)) return 'eth';
+function isENS(name) {
+    return name?.endsWith('.eth');
+}
+
+function detectChain(addr) {
+    if (isEthAddress(addr)) return 'eth';
     if (isBtcAddress(addr)) return 'btc';
+    if (isENS(addr)) return 'eth';
     return null;
-};
+}
 
-const calcGini = values => {
-    const sorted = [...values].filter(v => v > 0).sort((a, b) => a - b);
-    const n = sorted.length;
-    if (n === 0) return 0;
-    let sum = 0, cumSum = 0;
-    sorted.forEach((v, i) => {
-        cumSum += v;
-        sum += (i + 1) * v;
-    });
-    return (2 * sum) / (n * cumSum) - (n + 1) / n;
-};
+function getCutoffTimestamp() {
+    if (state.period === 0) return 0;
+    return Math.floor((Date.now() - state.period * 24 * 60 * 60 * 1000) / 1000);
+}
 
 // ============================================
 // LOCAL STORAGE
 // ============================================
-function loadState() {
-    try {
-        const saved = localStorage.getItem('walletlens_v3');
-        if (saved) {
-            const data = JSON.parse(saved);
-            state.wallets = data.wallets || [];
-            state.visibleStats = { ...state.visibleStats, ...data.visibleStats };
-            state.segment = data.segment || 'combined';
-            state.period = data.period ?? 30;
-        }
-    } catch (e) {
-        console.error('Error loading state:', e);
-    }
-}
-
 function saveState() {
     try {
-        localStorage.setItem('walletlens_v3', JSON.stringify({
+        localStorage.setItem('walletLens', JSON.stringify({
             wallets: state.wallets,
-            visibleStats: state.visibleStats,
+            period: state.period,
             segment: state.segment,
-            period: state.period
+            visibleStats: state.visibleStats
         }));
-    } catch (e) {
-        console.error('Error saving state:', e);
-    }
+    } catch (e) { console.error('Save error:', e); }
+}
+
+function loadState() {
+    try {
+        const saved = JSON.parse(localStorage.getItem('walletLens') || '{}');
+        if (saved.wallets) state.wallets = saved.wallets;
+        if (saved.period !== undefined) state.period = saved.period;
+        if (saved.segment) state.segment = saved.segment;
+        if (saved.visibleStats) state.visibleStats = { ...state.visibleStats, ...saved.visibleStats };
+    } catch (e) { console.error('Load error:', e); }
 }
 
 // ============================================
 // API CALLS
 // ============================================
+async function etherscanFetch(params) {
+    const url = new URL(CONFIG.ETHERSCAN_API);
+    url.searchParams.set('apikey', CONFIG.ETHERSCAN_KEY);
+    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+    
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.status === '1' || data.message === 'OK') {
+            return data.result;
+        }
+        console.warn('Etherscan response:', data.message);
+        return null;
+    } catch (e) {
+        console.error('Etherscan error:', e);
+        return null;
+    }
+}
+
 async function resolveENS(name) {
     try {
         const res = await fetch(`https://api.ensideas.com/ens/resolve/${name}`);
         const data = await res.json();
         return data.address || null;
-    } catch {
+    } catch (e) {
+        console.error('ENS error:', e);
         return null;
     }
 }
 
 async function fetchPrices() {
     try {
-        const res = await fetch(`${CONFIG.COINGECKO_API}?ids=ethereum,bitcoin&vs_currencies=usd`);
+        // Fetch ETH and BTC prices
+        const res = await fetch(`${CONFIG.COINGECKO_API}/simple/price?ids=ethereum,bitcoin&vs_currencies=usd`);
         const data = await res.json();
-        state.ethPrice = data.ethereum?.usd || 0;
-        state.btcPrice = data.bitcoin?.usd || 0;
-        document.getElementById('ethPriceDisplay').textContent = fmtUsd(state.ethPrice);
-        document.getElementById('btcPriceDisplay').textContent = fmtUsd(state.btcPrice);
-    } catch (e) {
-        console.error('Error fetching prices:', e);
-    }
-}
-
-// Fetch prices for multiple tokens from CoinGecko
-async function fetchTokenPrices(symbols) {
-    try {
-        // Get CoinGecko IDs for known tokens
-        const ids = symbols
-            .map(s => CONFIG.TOKEN_IDS[s.toUpperCase()])
-            .filter(id => id);
+        state.prices.eth = data.ethereum?.usd || 0;
+        state.prices.btc = data.bitcoin?.usd || 0;
         
-        if (ids.length === 0) return;
+        document.getElementById('ethPriceDisplay').textContent = fmtUsd(state.prices.eth);
+        document.getElementById('btcPriceDisplay').textContent = fmtUsd(state.prices.btc);
         
-        const res = await fetch(`${CONFIG.COINGECKO_API}?ids=${ids.join(',')}&vs_currencies=usd`);
-        const data = await res.json();
+        // Fetch token prices
+        const tokenIds = Object.values(CONFIG.TOKEN_IDS).join(',');
+        const tokenRes = await fetch(`${CONFIG.COINGECKO_API}/simple/price?ids=${tokenIds}&vs_currencies=usd`);
+        const tokenData = await tokenRes.json();
         
-        // Map back to symbols
         Object.entries(CONFIG.TOKEN_IDS).forEach(([symbol, id]) => {
-            if (data[id]?.usd) {
-                state.tokenPrices[symbol.toUpperCase()] = data[id].usd;
+            if (tokenData[id]?.usd) {
+                state.prices.tokens[symbol] = tokenData[id].usd;
             }
         });
         
-        // Stablecoins default to $1
+        // Stablecoins = $1
         CONFIG.STABLECOINS.forEach(s => {
-            state.tokenPrices[s.toUpperCase()] = 1;
+            state.prices.tokens[s.toUpperCase()] = 1;
         });
         
     } catch (e) {
-        console.error('Error fetching token prices:', e);
+        console.error('Price fetch error:', e);
     }
 }
 
-// Get token price from cache or estimate
-function getTokenPrice(symbol) {
-    const sym = symbol.toUpperCase();
-    if (state.tokenPrices[sym]) return state.tokenPrices[sym];
-    if (CONFIG.STABLECOINS.includes(sym.toLowerCase())) return 1;
-    return 0; // Unknown token
-}
-
-async function etherscanCall(module, action, params = {}) {
-    const url = new URL(CONFIG.ETHERSCAN_API);
-    url.searchParams.set('chainid', CONFIG.CHAINID);
-    url.searchParams.set('module', module);
-    url.searchParams.set('action', action);
-    url.searchParams.set('apikey', CONFIG.ETHERSCAN_KEY);
-    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-    
-    const res = await fetch(url);
-    const data = await res.json();
-    return data;
-}
-
+// ============================================
+// WALLET DATA FETCHING
+// ============================================
 async function fetchEthWallet(address) {
+    const cutoff = getCutoffTimestamp();
     const result = {
         address,
         balance: 0,
-        tokens: [],        // Token transactions (for flow analysis)
-        tokenBalances: [], // Actual current balances
-        rawTx: [],
-        rawInternalTx: [],
-        wbtcBalance: 0
+        balanceUsd: 0,
+        tokens: [],
+        transactions: [],
+        inflow: 0,
+        outflow: 0,
+        gasSpent: 0,
+        txCount: 0
     };
 
-    // ETH Balance
-    const balRes = await etherscanCall('account', 'balance', { address, tag: 'latest' });
-    if (balRes.status === '1') {
-        result.balance = weiToEth(balRes.result);
+    // 1. Get ETH balance
+    const balance = await etherscanFetch({
+        module: 'account',
+        action: 'balance',
+        address,
+        tag: 'latest'
+    });
+    if (balance) {
+        result.balance = weiToEth(balance);
+        result.balanceUsd = result.balance * state.prices.eth;
     }
     await delay(CONFIG.DELAY_MS);
 
-    // Get token transactions (for balances and flow analysis)
-    const tokRes = await etherscanCall('account', 'tokentx', { address, page: 1, offset: CONFIG.TOKEN_LIMIT, sort: 'desc' });
-    if (tokRes.status === '1' && Array.isArray(tokRes.result)) {
-        if (tokRes.result.length >= CONFIG.TOKEN_LIMIT) {
-            console.warn(`Token tx limit reached for ${shorten(address)}`);
-        }
-        result.tokens = tokRes.result;
+    // 2. Get normal transactions
+    const txList = await etherscanFetch({
+        module: 'account',
+        action: 'txlist',
+        address,
+        startblock: 0,
+        endblock: 99999999,
+        sort: 'desc'
+    });
+    
+    if (txList && Array.isArray(txList)) {
+        const addrLower = address.toLowerCase();
         
-        // Calculate token balances from transactions
-        const tokenMap = new Map();
-        tokRes.result.forEach(tx => {
-            const sym = tx.tokenSymbol?.toUpperCase() || 'UNKNOWN';
-            const dec = parseInt(tx.tokenDecimal) || 18;
-            const val = parseFloat(tx.value) / Math.pow(10, dec);
-            const contract = tx.contractAddress?.toLowerCase();
-            const key = `${sym}_${contract}`;
+        txList.forEach(tx => {
+            const timestamp = parseInt(tx.timeStamp);
+            if (cutoff > 0 && timestamp < cutoff) return;
             
-            if (!tokenMap.has(key)) {
-                tokenMap.set(key, {
-                    symbol: sym,
-                    name: tx.tokenName || '',
+            const value = weiToEth(tx.value);
+            const gasUsed = tx.gasUsed ? weiToEth(BigInt(tx.gasUsed) * BigInt(tx.gasPrice || 0)) : 0;
+            
+            if (tx.to?.toLowerCase() === addrLower) {
+                result.inflow += value;
+            }
+            if (tx.from?.toLowerCase() === addrLower) {
+                result.outflow += value;
+                result.gasSpent += gasUsed;
+            }
+            
+            result.transactions.push({
+                timestamp,
+                value,
+                from: tx.from,
+                to: tx.to,
+                type: 'normal'
+            });
+        });
+        
+        result.txCount = result.transactions.length;
+    }
+    await delay(CONFIG.DELAY_MS);
+
+    // 3. Get token balances
+    const tokenTx = await etherscanFetch({
+        module: 'account',
+        action: 'tokentx',
+        address,
+        startblock: 0,
+        endblock: 99999999,
+        sort: 'desc'
+    });
+    
+    if (tokenTx && Array.isArray(tokenTx)) {
+        const tokenMap = new Map();
+        const addrLower = address.toLowerCase();
+        
+        tokenTx.forEach(tx => {
+            const symbol = (tx.tokenSymbol || 'UNKNOWN').toUpperCase();
+            const decimals = parseInt(tx.tokenDecimal) || 18;
+            const value = parseFloat(tx.value) / Math.pow(10, decimals);
+            const contract = tx.contractAddress?.toLowerCase();
+            
+            if (!tokenMap.has(symbol)) {
+                tokenMap.set(symbol, {
+                    symbol,
+                    name: tx.tokenName || symbol,
                     balance: 0,
-                    contractAddress: contract,
-                    decimals: dec
+                    contract
                 });
             }
             
-            const token = tokenMap.get(key);
-            if (tx.to?.toLowerCase() === address.toLowerCase()) {
-                token.balance += val;
-            } else if (tx.from?.toLowerCase() === address.toLowerCase()) {
-                token.balance -= val;
+            const token = tokenMap.get(symbol);
+            if (tx.to?.toLowerCase() === addrLower) {
+                token.balance += value;
+            } else if (tx.from?.toLowerCase() === addrLower) {
+                token.balance -= value;
             }
         });
         
-        result.tokenBalances = [...tokenMap.values()]
-            .filter(t => t.balance > 0.0001);
-        
-        // Get WBTC balance
-        const wbtc = result.tokenBalances.find(t => 
-            t.contractAddress === CONFIG.WBTC_ADDRESS.toLowerCase()
-        );
-        if (wbtc) result.wbtcBalance = wbtc.balance;
+        // Filter positive balances and add USD values
+        result.tokens = [...tokenMap.values()]
+            .filter(t => t.balance > 0.0001)
+            .map(t => ({
+                ...t,
+                price: state.prices.tokens[t.symbol] || 0,
+                valueUsd: t.balance * (state.prices.tokens[t.symbol] || 0)
+            }))
+            .sort((a, b) => b.valueUsd - a.valueUsd);
     }
-    await delay(CONFIG.DELAY_MS);
-
-    // Normal Transactions
-    const txRes = await etherscanCall('account', 'txlist', { address, page: 1, offset: CONFIG.TX_LIMIT, sort: 'desc' });
-    if (txRes.status === '1' && Array.isArray(txRes.result)) {
-        if (txRes.result.length >= CONFIG.TX_LIMIT) {
-            console.warn(`Tx limit reached for ${shorten(address)}`);
-        }
-        result.rawTx = txRes.result;
-    }
-    await delay(CONFIG.DELAY_MS);
-
-    // Internal Transactions
-    const intRes = await etherscanCall('account', 'txlistinternal', { address, page: 1, offset: CONFIG.TX_LIMIT, sort: 'desc' });
-    if (intRes.status === '1' && Array.isArray(intRes.result)) {
-        result.rawInternalTx = intRes.result;
-    }
-    await delay(CONFIG.DELAY_MS);
 
     return result;
 }
@@ -2160,131 +2110,120 @@ async function fetchBtcWallet(address) {
         
         const funded = data.chain_stats?.funded_txo_sum || 0;
         const spent = data.chain_stats?.spent_txo_sum || 0;
+        const balance = satToBtc(funded - spent);
         
         return {
             address,
-            balance: satToBtc(funded - spent),
+            balance,
+            balanceUsd: balance * state.prices.btc,
             totalReceived: satToBtc(funded),
             totalSent: satToBtc(spent),
             txCount: (data.chain_stats?.tx_count || 0) + (data.mempool_stats?.tx_count || 0)
         };
     } catch (e) {
         console.error('BTC fetch error:', e);
-        return { address, balance: 0, totalReceived: 0, totalSent: 0, txCount: 0 };
+        return {
+            address,
+            balance: 0,
+            balanceUsd: 0,
+            totalReceived: 0,
+            totalSent: 0,
+            txCount: 0
+        };
     }
 }
 
 // ============================================
-// DATA ANALYSIS
+// MAIN ANALYSIS
 // ============================================
-function analyzeEthWallet(data, period) {
-    const now = Date.now();
-    const periodMs = period === 0 ? Infinity : period * 24 * 60 * 60 * 1000;
-    const cutoff = period === 0 ? 0 : now - periodMs;
-
-    const allTx = [...(data.rawTx || []), ...(data.rawInternalTx || [])];
-    const periodTx = allTx.filter(tx => parseInt(tx.timeStamp) * 1000 >= cutoff);
-
-    // Calculate metrics
-    let totalVolume = 0, gasSpent = 0, inflow = 0, outflow = 0;
-    const addr = data.address.toLowerCase();
-
-    periodTx.forEach(tx => {
-        const val = weiToEth(tx.value);
-        totalVolume += val;
-        
-        if (tx.to?.toLowerCase() === addr) inflow += val;
-        else if (tx.from?.toLowerCase() === addr) outflow += val;
-        
-        if (tx.gasUsed && tx.gasPrice) {
-            gasSpent += weiToEth(BigInt(tx.gasUsed) * BigInt(tx.gasPrice));
-        }
-    });
-
-    // Use actual token balances with prices
-    const tokens = (data.tokenBalances || []).map(t => {
-        const price = getTokenPrice(t.symbol);
-        return {
-            symbol: t.symbol,
-            name: t.name || t.symbol,
-            balance: t.balance,
-            value: t.balance * price,
-            price: price,
-            contractAddress: t.contractAddress
-        };
-    }).filter(t => t.balance > 0.0001);
+async function runAnalysis() {
+    const selected = state.wallets.filter(w => w.selected);
+    if (selected.length === 0) {
+        alert('Select at least one wallet to analyze');
+        return;
+    }
     
-    // Sort by USD value descending
-    tokens.sort((a, b) => b.value - a.value);
+    showLoading('Fetching prices...');
+    await fetchPrices();
     
-    // Calculate total token value
-    const totalTokenValue = tokens.reduce((sum, t) => sum + t.value, 0);
-
-    // Find first tx for funding source
-    const sortedTx = [...(data.rawTx || [])].sort((a, b) => parseInt(a.timeStamp) - parseInt(b.timeStamp));
-    let fundingSource = 'Unknown';
-    if (sortedTx.length > 0) {
-        const firstTx = sortedTx[0];
-        if (firstTx.from) {
-            const fromAddr = firstTx.from.toLowerCase();
-            fundingSource = CONFIG.DEFI_PROTOCOLS[fromAddr] || shorten(firstTx.from);
+    state.ethData = [];
+    state.btcData = [];
+    
+    const ethWallets = selected.filter(w => w.chain === 'eth');
+    const btcWallets = selected.filter(w => w.chain === 'btc');
+    
+    // Fetch ETH wallets
+    for (let i = 0; i < ethWallets.length; i++) {
+        const w = ethWallets[i];
+        updateLoading(`ETH ${i + 1}/${ethWallets.length}: ${shorten(w.address)}`);
+        
+        try {
+            const data = await fetchEthWallet(w.address);
+            data.label = w.label;
+            state.ethData.push(data);
+            
+            // Update library
+            w.balance = data.balance;
+            w.tokenCount = data.tokens.length;
+        } catch (e) {
+            console.error('ETH wallet error:', e);
         }
     }
-
-    // Age calculation
-    const firstTimestamp = sortedTx.length > 0 ? parseInt(sortedTx[0].timeStamp) * 1000 : now;
-    const ageDays = (now - firstTimestamp) / (24 * 60 * 60 * 1000);
-
-    // Last activity
-    const lastTx = allTx.length > 0 ? 
-        Math.max(...allTx.map(tx => parseInt(tx.timeStamp))) * 1000 : null;
-
-    // Segmentation
-    const isActive = periodTx.length > 0;
-    const txFreq = periodTx.length / (period || 365);
-    let segment = 'Inactive';
     
-    if (isActive) {
-        if (data.balance >= 100) segment = 'Whale';
-        else if (txFreq > 1) segment = 'Trader';
-        else if (txFreq > 0.1) segment = 'Active';
-        else segment = 'Hodler';
-    } else if (data.balance > 0) {
-        segment = 'Dormant';
+    // Fetch BTC wallets
+    for (let i = 0; i < btcWallets.length; i++) {
+        const w = btcWallets[i];
+        updateLoading(`BTC ${i + 1}/${btcWallets.length}: ${shorten(w.address)}`);
+        
+        try {
+            const data = await fetchBtcWallet(w.address);
+            data.label = w.label;
+            state.btcData.push(data);
+            w.balance = data.balance;
+        } catch (e) {
+            console.error('BTC wallet error:', e);
+        }
+        
+        await delay(100);
     }
-
-    return {
-        totalVolume,
-        gasSpent,
-        inflow,
-        outflow,
-        netFlow: inflow - outflow,
-        txCount: periodTx.length,
-        totalTxCount: allTx.length,
-        tokens,
-        tokCount: tokens.length,
-        totalTokenValue,
-        fundingSource,
-        ageDays,
-        lastAct: lastTx ? new Date(lastTx) : null,
-        isActive,
-        segment
-    };
+    
+    hideLoading();
+    saveState();
+    renderWalletList();
+    renderDashboard();
+    
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+    document.getElementById('apiStatus').textContent = 'Ready';
+    document.getElementById('apiStatus').className = 'status-value success';
 }
 
 // ============================================
 // UI FUNCTIONS
 // ============================================
+function showLoading(text = 'Loading...') {
+    state.loading = true;
+    document.getElementById('loadingOverlay').classList.add('active');
+    document.querySelector('.loading-text').textContent = text;
+    document.getElementById('loadingProgress').textContent = '';
+}
+
+function updateLoading(text) {
+    document.getElementById('loadingProgress').textContent = text;
+}
+
+function hideLoading() {
+    state.loading = false;
+    document.getElementById('loadingOverlay').classList.remove('active');
+}
+
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('open');
     document.getElementById('sidebarOverlay').classList.toggle('active');
 }
 
 function toggleSettings() {
-    const panel = document.getElementById('settingsPanel');
-    const btn = document.getElementById('settingsBtn');
-    panel.classList.toggle('open');
-    btn.classList.toggle('open');
+    document.getElementById('settingsPanel').classList.toggle('open');
+    document.getElementById('settingsBtn').classList.toggle('open');
 }
 
 function toggleStat(stat) {
@@ -2317,179 +2256,67 @@ function setSegment(seg) {
 }
 
 function togglePeriodDropdown() {
-    const btn = document.querySelector('#periodDropdown .dropdown-btn');
-    const menu = document.getElementById('periodMenu');
-    btn.classList.toggle('open');
-    menu.classList.toggle('open');
+    document.querySelector('#periodDropdown .dropdown-btn').classList.toggle('open');
+    document.getElementById('periodMenu').classList.toggle('open');
 }
 
 function closePeriodDropdown() {
-    const btn = document.querySelector('#periodDropdown .dropdown-btn');
-    const menu = document.getElementById('periodMenu');
-    btn.classList.remove('open');
-    menu.classList.remove('open');
+    document.querySelector('#periodDropdown .dropdown-btn').classList.remove('open');
+    document.getElementById('periodMenu').classList.remove('open');
 }
 
-function setPeriod(period) {
-    state.period = period;
-    
-    // Update dropdown display
-    const labels = { 7: '7D', 30: '30D', 90: '90D', 365: '1Y', 0: 'All' };
-    document.getElementById('periodValue').textContent = labels[period] || '30D';
-    
-    // Update active state
+function setPeriod(days) {
+    state.period = days;
+    const labels = { 7: '7D', 30: '30D', 90: '90D', 180: '6M', 365: '1Y', 0: 'All' };
+    document.getElementById('periodValue').textContent = labels[days] || '6M';
     document.querySelectorAll('.dropdown-item[data-period]').forEach(el => {
-        el.classList.toggle('active', parseInt(el.dataset.period) === period);
+        el.classList.toggle('active', parseInt(el.dataset.period) === days);
     });
-    
     closePeriodDropdown();
     saveState();
     
-    // Re-analyze with new period if we have data
-    if (state.ethData.length > 0) {
-        state.ethData.forEach(w => {
-            w.analyzed = analyzeEthWallet(w, period);
-        });
-        renderDashboard();
+    // Re-run if we have data
+    if (state.ethData.length > 0 || state.btcData.length > 0) {
+        runAnalysis();
     }
 }
 
-function markNeedsRefresh() {
-    state.needsRefresh = true;
-    document.getElementById('refreshBtn').classList.add('needs-refresh');
-}
-
-function clearNeedsRefresh() {
-    state.needsRefresh = false;
-    document.getElementById('refreshBtn').classList.remove('needs-refresh');
-}
-
-function showLoading(text = 'Analyzing wallets...') {
-    document.getElementById('loadingOverlay').classList.add('active');
-    document.querySelector('.loading-text').textContent = text;
-    document.getElementById('loadingProgress').textContent = '';
-}
-
-function updateLoading(progress) {
-    document.getElementById('loadingProgress').textContent = progress;
-}
-
-function hideLoading() {
-    document.getElementById('loadingOverlay').classList.remove('active');
-}
-
-function addWarning(title, message) {
-    const id = Date.now();
-    state.warnings.push({ id, title, message });
-    renderWarnings();
-    setTimeout(() => dismissWarning(id), 10000);
-}
-
-function dismissWarning(id) {
-    state.warnings = state.warnings.filter(w => w.id !== id);
-    renderWarnings();
-}
-
-function renderWarnings() {
-    const container = document.getElementById('dataWarnings');
-    container.innerHTML = state.warnings.map(w => `
-        <div class="data-warning">
-            <button class="data-warning-close" onclick="dismissWarning(${w.id})">×</button>
-            <div class="data-warning-title">⚠️ ${w.title}</div>
-            <div>${w.message}</div>
-        </div>
-    `).join('');
-}
-
+// ============================================
+// WALLET MANAGEMENT
+// ============================================
 async function pasteFromClipboard() {
     try {
         const text = await navigator.clipboard.readText();
         document.getElementById('addressInput').value = text;
-    } catch (e) {
-        console.error('Clipboard error:', e);
-    }
+    } catch (e) { console.error('Clipboard error:', e); }
 }
 
-// Mobile-specific functions
 async function pasteFromClipboardMobile() {
     try {
         const text = await navigator.clipboard.readText();
         document.getElementById('mobileAddressInput').value = text;
-    } catch (e) {
-        console.error('Clipboard error:', e);
-    }
+    } catch (e) { console.error('Clipboard error:', e); }
 }
 
-function handleMobileEnter(event) {
-    if (event.key === 'Enter') {
-        addWalletsMobile();
-    }
+function handleMobileEnter(e) {
+    if (e.key === 'Enter') addWalletsMobile();
 }
 
 async function addWalletsMobile() {
     const input = document.getElementById('mobileAddressInput');
-    const lines = input.value.split(/[\n,]/).map(l => l.trim()).filter(l => l);
-    
-    for (const line of lines) {
-        let address = line;
-        let chain = detectChain(line);
-        
-        // Resolve ENS
-        if (isENS(line)) {
-            showLoading('Resolving ENS...');
-            const resolved = await resolveENS(line);
-            if (resolved) {
-                address = resolved;
-                chain = 'eth';
-            } else {
-                addWarning('ENS Resolution Failed', `Could not resolve ${line}`);
-                continue;
-            }
-            hideLoading();
-        }
-        
-        if (!chain) {
-            addWarning('Invalid Address', `"${shorten(line, 10, 6)}" is not a valid address.`);
-            continue;
-        }
-        
-        // Check for duplicates
-        const exists = state.wallets.some(w => w.address.toLowerCase() === address.toLowerCase());
-        if (exists) continue;
-        
-        state.wallets.push({
-            address,
-            chain,
-            label: isENS(line) ? line : '',
-            selected: true,
-            addedAt: Date.now(),
-            balance: null,
-            tokenCount: null
-        });
-    }
-    
+    await processAddWallet(input.value);
     input.value = '';
-    saveState();
-    renderWalletList();
-    updateCounts();
-    updateMobileWalletCount();
-    
-    // Auto-refresh analysis when wallet is added
-    if (state.wallets.length > 0) {
-        await runAnalysis();
-    }
-}
-
-function updateMobileWalletCount() {
-    const countEl = document.getElementById('mobileWalletCount');
-    if (countEl) {
-        countEl.textContent = state.wallets.length;
-    }
 }
 
 async function addWallets() {
     const input = document.getElementById('addressInput');
-    const lines = input.value.split(/[\n,]/).map(l => l.trim()).filter(l => l);
+    await processAddWallet(input.value);
+    input.value = '';
+}
+
+async function processAddWallet(inputValue) {
+    const lines = inputValue.split(/[\n,]/).map(l => l.trim()).filter(l => l);
+    let added = false;
     
     for (const line of lines) {
         let address = line;
@@ -2499,24 +2326,25 @@ async function addWallets() {
         if (isENS(line)) {
             showLoading('Resolving ENS...');
             const resolved = await resolveENS(line);
+            hideLoading();
             if (resolved) {
                 address = resolved;
                 chain = 'eth';
             } else {
-                addWarning('ENS Resolution Failed', `Could not resolve ${line}`);
+                alert(`Could not resolve ${line}`);
                 continue;
             }
-            hideLoading();
         }
         
         if (!chain) {
-            addWarning('Invalid Address', `"${shorten(line, 10, 6)}" is not a valid address.`);
+            alert(`Invalid address: ${line}`);
             continue;
         }
         
-        // Check for duplicates
-        const exists = state.wallets.some(w => w.address.toLowerCase() === address.toLowerCase());
-        if (exists) continue;
+        // Check duplicates
+        if (state.wallets.some(w => w.address.toLowerCase() === address.toLowerCase())) {
+            continue;
+        }
         
         state.wallets.push({
             address,
@@ -2527,16 +2355,16 @@ async function addWallets() {
             balance: null,
             tokenCount: null
         });
+        added = true;
     }
     
-    input.value = '';
-    saveState();
-    renderWalletList();
-    updateCounts();
-    updateMobileWalletCount();
-    
-    // Auto-refresh analysis when wallet is added
-    if (state.wallets.length > 0) {
+    if (added) {
+        saveState();
+        renderWalletList();
+        updateCounts();
+        updateMobileWalletCount();
+        
+        // Auto-refresh
         await runAnalysis();
     }
 }
@@ -2547,7 +2375,6 @@ function removeWallet(address) {
     renderWalletList();
     updateCounts();
     updateMobileWalletCount();
-    markNeedsRefresh();
 }
 
 function toggleWalletSelection(address) {
@@ -2557,7 +2384,6 @@ function toggleWalletSelection(address) {
         saveState();
         renderWalletList();
         updateCounts();
-        markNeedsRefresh();
     }
 }
 
@@ -2570,7 +2396,7 @@ function updateWalletLabel(address, label) {
 }
 
 function clearAllWallets() {
-    if (confirm('Remove all wallets from library?')) {
+    if (confirm('Remove all wallets?')) {
         state.wallets = [];
         state.ethData = [];
         state.btcData = [];
@@ -2580,6 +2406,18 @@ function clearAllWallets() {
         updateMobileWalletCount();
         renderDashboard();
     }
+}
+
+function updateMobileWalletCount() {
+    const el = document.getElementById('mobileWalletCount');
+    if (el) el.textContent = state.wallets.length;
+}
+
+function updateCounts() {
+    const selected = state.wallets.filter(w => w.selected);
+    document.getElementById('countCombined').textContent = selected.length;
+    document.getElementById('countEth').textContent = selected.filter(w => w.chain === 'eth').length;
+    document.getElementById('countBtc').textContent = selected.filter(w => w.chain === 'btc').length;
 }
 
 function renderWalletList() {
@@ -2595,22 +2433,30 @@ function renderWalletList() {
         container.innerHTML = `
             <div class="wallet-list-empty">
                 <div class="wallet-list-empty-icon">📋</div>
-                <div class="wallet-list-empty-text">No wallets${filter !== 'all' ? ' matching filter' : ''}.<br>Add addresses above to start.</div>
+                <div class="wallet-list-empty-text">No wallets yet.<br>Add addresses above to start.</div>
             </div>
         `;
+        document.getElementById('libraryCount').textContent = '(0)';
         return;
     }
     
     container.innerHTML = wallets.map(w => {
-        const balanceDisplay = w.balance !== null ? 
-            (w.chain === 'eth' ? fmtEth(w.balance) : fmtBtc(w.balance)) : '—';
-        const usdDisplay = w.balance !== null ? 
-            fmtUsd(w.balance * (w.chain === 'eth' ? state.ethPrice : state.btcPrice)) : '';
-        const tokensDisplay = w.chain === 'eth' && w.tokenCount !== null ? 
-            `${w.tokenCount} tokens` : '';
-        const explorer = w.chain === 'eth' ? 
-            `https://etherscan.io/address/${w.address}` : 
-            `https://blockstream.info/address/${w.address}`;
+        const explorer = w.chain === 'eth' 
+            ? `https://etherscan.io/address/${w.address}`
+            : `https://mempool.space/address/${w.address}`;
+        
+        let balanceDisplay = '—';
+        let usdDisplay = '';
+        
+        if (w.balance !== null) {
+            if (w.chain === 'eth') {
+                balanceDisplay = fmtEth(w.balance);
+                usdDisplay = fmtUsd(w.balance * state.prices.eth);
+            } else {
+                balanceDisplay = fmtBtc(w.balance);
+                usdDisplay = fmtUsd(w.balance * state.prices.btc);
+            }
+        }
         
         return `
             <div class="wallet-item ${w.selected ? '' : 'unselected'}">
@@ -2631,7 +2477,7 @@ function renderWalletList() {
                     <div class="wallet-stats">
                         <div class="wallet-balance">${balanceDisplay}</div>
                         ${usdDisplay ? `<div class="wallet-balance-usd">${usdDisplay}</div>` : ''}
-                        ${tokensDisplay ? `<div class="wallet-tokens">${tokensDisplay}</div>` : ''}
+                        ${w.tokenCount ? `<div class="wallet-tokens">${w.tokenCount} tokens</div>` : ''}
                     </div>
                     <div class="wallet-actions">
                         <a href="${explorer}" target="_blank" class="wallet-action" title="View on Explorer">🔗</a>
@@ -2643,106 +2489,6 @@ function renderWalletList() {
     }).join('');
     
     document.getElementById('libraryCount').textContent = `(${state.wallets.length})`;
-}
-
-function updateCounts() {
-    const selected = state.wallets.filter(w => w.selected);
-    const ethCount = selected.filter(w => w.chain === 'eth').length;
-    const btcCount = selected.filter(w => w.chain === 'btc').length;
-    
-    document.getElementById('countCombined').textContent = selected.length;
-    document.getElementById('countEth').textContent = ethCount;
-    document.getElementById('countBtc').textContent = btcCount;
-}
-
-// ============================================
-// MAIN ANALYSIS
-// ============================================
-async function runAnalysis() {
-    const selected = state.wallets.filter(w => w.selected);
-    if (selected.length === 0) {
-        addWarning('No Wallets Selected', 'Select at least one wallet to analyze.');
-        return;
-    }
-    
-    showLoading('Fetching prices...');
-    await fetchPrices();
-    
-    const ethWallets = selected.filter(w => w.chain === 'eth');
-    const btcWallets = selected.filter(w => w.chain === 'btc');
-    
-    state.ethData = [];
-    state.btcData = [];
-    
-    // Fetch ETH wallets
-    for (let i = 0; i < ethWallets.length; i++) {
-        const w = ethWallets[i];
-        updateLoading(`ETH ${i + 1}/${ethWallets.length}: ${shorten(w.address)}`);
-        
-        try {
-            const data = await fetchEthWallet(w.address);
-            data.label = w.label;
-            data.analyzed = analyzeEthWallet(data, state.period);
-            state.ethData.push(data);
-            
-            // Update wallet in library
-            const libWallet = state.wallets.find(lw => lw.address === w.address);
-            if (libWallet) {
-                libWallet.balance = data.balance;
-                libWallet.tokenCount = data.analyzed.tokCount;
-            }
-        } catch (e) {
-            console.error('ETH fetch error:', e);
-            addWarning('Fetch Error', `Failed to fetch ${shorten(w.address)}`);
-        }
-    }
-    
-    // Fetch BTC wallets
-    for (let i = 0; i < btcWallets.length; i++) {
-        const w = btcWallets[i];
-        updateLoading(`BTC ${i + 1}/${btcWallets.length}: ${shorten(w.address)}`);
-        
-        try {
-            const data = await fetchBtcWallet(w.address);
-            data.label = w.label;
-            state.btcData.push(data);
-            
-            // Update wallet in library
-            const libWallet = state.wallets.find(lw => lw.address === w.address);
-            if (libWallet) {
-                libWallet.balance = data.balance;
-            }
-        } catch (e) {
-            console.error('BTC fetch error:', e);
-        }
-        
-        await delay(100);
-    }
-    
-    // Fetch token prices for all unique tokens
-    if (state.ethData.length > 0) {
-        updateLoading('Fetching token prices...');
-        const allSymbols = new Set();
-        state.ethData.forEach(w => {
-            (w.tokenBalances || []).forEach(t => {
-                allSymbols.add(t.symbol.toUpperCase());
-            });
-        });
-        await fetchTokenPrices([...allSymbols]);
-        
-        // Re-analyze with prices
-        state.ethData.forEach(w => {
-            w.analyzed = analyzeEthWallet(w, state.period);
-        });
-    }
-    
-    hideLoading();
-    clearNeedsRefresh();
-    saveState();
-    renderWalletList();
-    renderDashboard();
-    
-    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
 }
 
 // ============================================
@@ -2759,42 +2505,32 @@ function renderCombinedDashboard() {
     const hasData = state.ethData.length > 0 || state.btcData.length > 0;
     document.getElementById('combined-empty').style.display = hasData ? 'none' : '';
     document.getElementById('combined-content').style.display = hasData ? '' : 'none';
-    
     if (!hasData) return;
     
     // Calculate totals
     const ethTotal = state.ethData.reduce((s, w) => s + w.balance, 0);
     const btcTotal = state.btcData.reduce((s, w) => s + w.balance, 0);
-    const wbtcTotal = state.ethData.reduce((s, w) => s + (w.wbtcBalance || 0), 0);
+    const ethUsd = ethTotal * state.prices.eth;
+    const btcUsd = btcTotal * state.prices.btc;
     
-    const ethUsd = ethTotal * state.ethPrice;
-    const btcUsd = btcTotal * state.btcPrice;
-    const wbtcUsd = wbtcTotal * state.btcPrice;
-    
-    // Stablecoin calculation - use value which already has USD
+    // Token values
     let stableUsd = 0;
     let otherTokensUsd = 0;
     state.ethData.forEach(w => {
-        (w.analyzed?.tokens || []).forEach(t => {
+        w.tokens.forEach(t => {
             if (CONFIG.STABLECOINS.includes(t.symbol.toLowerCase())) {
-                stableUsd += t.value || t.balance; // value has USD, fallback to balance for stables
+                stableUsd += t.valueUsd || t.balance;
             } else {
-                otherTokensUsd += t.value || 0;
+                otherTokensUsd += t.valueUsd || 0;
             }
         });
     });
     
-    const totalUsd = ethUsd + btcUsd + wbtcUsd + stableUsd + otherTokensUsd;
-    
-    // Net flow (ETH only since BTC API doesn't give timestamps)
-    const netFlowEth = state.ethData.reduce((s, w) => s + (w.analyzed?.netFlow || 0), 0);
-    const netFlowUsd = netFlowEth * state.ethPrice;
-    
-    // Total transactions
-    const totalTx = state.ethData.reduce((s, w) => s + (w.analyzed?.txCount || 0), 0) +
+    const totalUsd = ethUsd + btcUsd + stableUsd + otherTokensUsd;
+    const netFlowEth = state.ethData.reduce((s, w) => s + (w.inflow - w.outflow), 0);
+    const totalTx = state.ethData.reduce((s, w) => s + w.txCount, 0) + 
                     state.btcData.reduce((s, w) => s + w.txCount, 0);
     
-    // KPIs
     document.getElementById('combinedKpis').innerHTML = `
         <div class="kpi-card">
             <div class="kpi-label">Total AUM</div>
@@ -2802,49 +2538,43 @@ function renderCombinedDashboard() {
             <div class="kpi-sub">${state.ethData.length + state.btcData.length} wallets</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">ETH Value</div>
+            <div class="kpi-label">ETH Holdings</div>
             <div class="kpi-value eth">${fmtUsd(ethUsd)}</div>
             <div class="kpi-sub">${fmtEth(ethTotal)}</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">BTC Value</div>
+            <div class="kpi-label">BTC Holdings</div>
             <div class="kpi-value btc">${fmtUsd(btcUsd)}</div>
             <div class="kpi-sub">${fmtBtc(btcTotal)}</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">Stablecoins</div>
             <div class="kpi-value stable">${fmtUsd(stableUsd)}</div>
-            <div class="kpi-sub">${((stableUsd / totalUsd) * 100).toFixed(1)}% of AUM</div>
+            <div class="kpi-sub">${totalUsd > 0 ? ((stableUsd / totalUsd) * 100).toFixed(1) : 0}% of AUM</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">WBTC Held <span class="kpi-badge">ETH</span></div>
-            <div class="kpi-value btc">${fmtUsd(wbtcUsd)}</div>
-            <div class="kpi-sub">${fmt(wbtcTotal, 6)} WBTC</div>
+            <div class="kpi-label">Other Tokens</div>
+            <div class="kpi-value">${fmtUsd(otherTokensUsd)}</div>
+            <div class="kpi-sub">${totalUsd > 0 ? ((otherTokensUsd / totalUsd) * 100).toFixed(1) : 0}% of AUM</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Net Flow <span class="kpi-badge">${state.period || 'ALL'}D</span></div>
-            <div class="kpi-value ${netFlowUsd >= 0 ? 'success' : 'danger'}">${netFlowUsd >= 0 ? '+' : ''}${fmtUsd(netFlowUsd)}</div>
-            <div class="kpi-sub">${netFlowEth >= 0 ? '+' : ''}${fmtEth(netFlowEth)}</div>
+            <div class="kpi-label">Net Flow <span class="kpi-badge">${state.period}D</span></div>
+            <div class="kpi-value ${netFlowEth >= 0 ? 'success' : 'danger'}">${netFlowEth >= 0 ? '+' : ''}${fmtEth(netFlowEth)}</div>
+            <div class="kpi-sub">${fmtUsd(netFlowEth * state.prices.eth)}</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Transactions <span class="kpi-badge">${state.period || 'ALL'}D</span></div>
+            <div class="kpi-label">Transactions <span class="kpi-badge">${state.period}D</span></div>
             <div class="kpi-value">${fmt(totalTx, 0)}</div>
             <div class="kpi-sub">All chains</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Active Wallets <span class="kpi-badge">${state.period || 'ALL'}D</span></div>
-            <div class="kpi-value">${state.ethData.filter(w => w.analyzed?.isActive).length}</div>
-            <div class="kpi-sub">of ${state.ethData.length} ETH wallets</div>
+            <div class="kpi-label">Wallets Analyzed</div>
+            <div class="kpi-value">${state.ethData.length + state.btcData.length}</div>
+            <div class="kpi-sub">${state.ethData.length} ETH · ${state.btcData.length} BTC</div>
         </div>
     `;
     
-    // Allocation Chart - now includes other tokens properly
-    renderAllocationChart(ethUsd, btcUsd + wbtcUsd, stableUsd, otherTokensUsd);
-    
-    // Chain Chart
-    renderChainChart(ethUsd, btcUsd);
-    
-    // Combined Flow Chart
+    renderAllocationChart(ethUsd, btcUsd, stableUsd, otherTokensUsd);
     renderCombinedFlowChart();
 }
 
@@ -2852,34 +2582,33 @@ function renderEthDashboard() {
     const hasData = state.ethData.length > 0;
     document.getElementById('eth-empty').style.display = hasData ? 'none' : '';
     document.getElementById('eth-content').style.display = hasData ? '' : 'none';
-    
     if (!hasData) return;
     
-    // Calculate metrics
     const totalEth = state.ethData.reduce((s, w) => s + w.balance, 0);
-    const ethUsd = totalEth * state.ethPrice;
-    const totalTokens = new Set();
-    let stableUsd = 0;
+    const ethUsd = totalEth * state.prices.eth;
+    
     let totalTokenValue = 0;
+    let stableValue = 0;
+    const allTokens = new Map();
     
     state.ethData.forEach(w => {
-        (w.analyzed?.tokens || []).forEach(t => {
-            totalTokens.add(t.symbol);
-            totalTokenValue += t.value || 0;
+        w.tokens.forEach(t => {
+            totalTokenValue += t.valueUsd || 0;
             if (CONFIG.STABLECOINS.includes(t.symbol.toLowerCase())) {
-                stableUsd += t.value || t.balance;
+                stableValue += t.valueUsd || t.balance;
             }
+            
+            const existing = allTokens.get(t.symbol) || { ...t, balance: 0, valueUsd: 0 };
+            existing.balance += t.balance;
+            existing.valueUsd += t.valueUsd || 0;
+            allTokens.set(t.symbol, existing);
         });
     });
     
-    const totalAum = ethUsd + totalTokenValue;
-    const netFlow = state.ethData.reduce((s, w) => s + (w.analyzed?.netFlow || 0), 0);
-    const totalTx = state.ethData.reduce((s, w) => s + (w.analyzed?.txCount || 0), 0);
-    const totalGas = state.ethData.reduce((s, w) => s + (w.analyzed?.gasSpent || 0), 0);
-    const activeCount = state.ethData.filter(w => w.analyzed?.isActive).length;
-    const wbtcTotal = state.ethData.reduce((s, w) => s + (w.wbtcBalance || 0), 0);
+    const netFlow = state.ethData.reduce((s, w) => s + (w.inflow - w.outflow), 0);
+    const totalTx = state.ethData.reduce((s, w) => s + w.txCount, 0);
+    const totalGas = state.ethData.reduce((s, w) => s + w.gasSpent, 0);
     
-    // KPIs
     document.getElementById('ethKpis').innerHTML = `
         <div class="kpi-card">
             <div class="kpi-label">Total ETH</div>
@@ -2889,46 +2618,45 @@ function renderEthDashboard() {
         <div class="kpi-card">
             <div class="kpi-label">Token Holdings</div>
             <div class="kpi-value gold">${fmtUsd(totalTokenValue)}</div>
-            <div class="kpi-sub">${totalTokens.size} unique tokens</div>
+            <div class="kpi-sub">${allTokens.size} unique tokens</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Stablecoin Exposure</div>
-            <div class="kpi-value stable">${fmtUsd(stableUsd)}</div>
-            <div class="kpi-sub">${totalAum > 0 ? ((stableUsd / totalAum) * 100).toFixed(1) : 0}% of AUM</div>
+            <div class="kpi-label">Stablecoins</div>
+            <div class="kpi-value stable">${fmtUsd(stableValue)}</div>
+            <div class="kpi-sub">${ethUsd + totalTokenValue > 0 ? ((stableValue / (ethUsd + totalTokenValue)) * 100).toFixed(1) : 0}%</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">WBTC Balance</div>
-            <div class="kpi-value btc">${fmt(wbtcTotal, 6)}</div>
-            <div class="kpi-sub">${fmtUsd(wbtcTotal * state.btcPrice)}</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Net Flow <span class="kpi-badge">${state.period || 'ALL'}D</span></div>
+            <div class="kpi-label">Net Flow <span class="kpi-badge">${state.period}D</span></div>
             <div class="kpi-value ${netFlow >= 0 ? 'success' : 'danger'}">${netFlow >= 0 ? '+' : ''}${fmtEth(netFlow)}</div>
-            <div class="kpi-sub">${fmtUsd(netFlow * state.ethPrice)}</div>
+            <div class="kpi-sub">${fmtUsd(netFlow * state.prices.eth)}</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Active Wallets <span class="kpi-badge">${state.period || 'ALL'}D</span></div>
-            <div class="kpi-value">${activeCount}</div>
-            <div class="kpi-sub">${((activeCount / state.ethData.length) * 100).toFixed(0)}% of total</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Transactions <span class="kpi-badge">${state.period || 'ALL'}D</span></div>
+            <div class="kpi-label">Transactions <span class="kpi-badge">${state.period}D</span></div>
             <div class="kpi-value">${fmt(totalTx, 0)}</div>
-            <div class="kpi-sub">Normal + Internal</div>
+            <div class="kpi-sub">Normal txs</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Gas Spent <span class="kpi-badge">${state.period || 'ALL'}D</span></div>
+            <div class="kpi-label">Gas Spent <span class="kpi-badge">${state.period}D</span></div>
             <div class="kpi-value">${fmtEth(totalGas)}</div>
-            <div class="kpi-sub">${fmtUsd(totalGas * state.ethPrice)}</div>
+            <div class="kpi-sub">${fmtUsd(totalGas * state.prices.eth)}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Inflow <span class="kpi-badge">${state.period}D</span></div>
+            <div class="kpi-value success">+${fmtEth(state.ethData.reduce((s, w) => s + w.inflow, 0))}</div>
+            <div class="kpi-sub">Received</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Outflow <span class="kpi-badge">${state.period}D</span></div>
+            <div class="kpi-value danger">-${fmtEth(state.ethData.reduce((s, w) => s + w.outflow, 0))}</div>
+            <div class="kpi-sub">Sent</div>
         </div>
     `;
     
-    // Render charts
     renderAumChart();
     renderBalanceDistChart();
     renderNetFlowChart();
-    renderTopTokensChart();
-    renderTokenListTable();
+    renderTopTokensChart([...allTokens.values()]);
+    renderTokenListTable([...allTokens.values()]);
     renderSegmentChart();
     renderHeatmap();
     renderLorenzChart();
@@ -2939,7 +2667,6 @@ function renderBtcDashboard() {
     const hasData = state.btcData.length > 0;
     document.getElementById('btc-empty').style.display = hasData ? 'none' : '';
     document.getElementById('btc-content').style.display = hasData ? '' : 'none';
-    
     if (!hasData) return;
     
     const totalBtc = state.btcData.reduce((s, w) => s + w.balance, 0);
@@ -2947,22 +2674,21 @@ function renderBtcDashboard() {
     const totalSent = state.btcData.reduce((s, w) => s + w.totalSent, 0);
     const totalTx = state.btcData.reduce((s, w) => s + w.txCount, 0);
     
-    // KPIs
     document.getElementById('btcKpis').innerHTML = `
         <div class="kpi-card">
             <div class="kpi-label">Total BTC</div>
             <div class="kpi-value btc">${fmtBtc(totalBtc)}</div>
-            <div class="kpi-sub">${fmtUsd(totalBtc * state.btcPrice)}</div>
+            <div class="kpi-sub">${fmtUsd(totalBtc * state.prices.btc)}</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">Total Received</div>
             <div class="kpi-value success">${fmtBtc(totalReceived)}</div>
-            <div class="kpi-sub">${fmtUsd(totalReceived * state.btcPrice)}</div>
+            <div class="kpi-sub">${fmtUsd(totalReceived * state.prices.btc)}</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">Total Sent</div>
             <div class="kpi-value danger">${fmtBtc(totalSent)}</div>
-            <div class="kpi-sub">${fmtUsd(totalSent * state.btcPrice)}</div>
+            <div class="kpi-sub">${fmtUsd(totalSent * state.prices.btc)}</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">Transaction Count</div>
@@ -2971,7 +2697,6 @@ function renderBtcDashboard() {
         </div>
     `;
     
-    // Charts
     renderBtcDistChart();
     renderBtcFlowChart();
     renderBtcTable();
@@ -2982,47 +2707,47 @@ function renderBtcDashboard() {
 // ============================================
 const chartColors = {
     gold: '#B8A45A',
-    goldDim: 'rgba(184, 164, 90, 0.2)',
+    goldDim: 'rgba(184, 164, 90, 0.3)',
     eth: '#627EEA',
-    ethDim: 'rgba(98, 126, 234, 0.2)',
+    ethDim: 'rgba(98, 126, 234, 0.3)',
     btc: '#F7931A',
-    btcDim: 'rgba(247, 147, 26, 0.2)',
+    btcDim: 'rgba(247, 147, 26, 0.3)',
     success: '#34D399',
-    successDim: 'rgba(52, 211, 153, 0.4)',
+    successDim: 'rgba(52, 211, 153, 0.5)',
     danger: '#F87171',
-    dangerDim: 'rgba(248, 113, 113, 0.4)',
+    dangerDim: 'rgba(248, 113, 113, 0.5)',
     stable: '#26A17B',
-    stableDim: 'rgba(38, 161, 123, 0.2)',
+    stableDim: 'rgba(38, 161, 123, 0.3)',
     muted: '#6B7280'
 };
 
 const chartDefaults = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: {
-        legend: { display: false }
-    },
+    plugins: { legend: { display: false } },
     scales: {
-        x: {
-            grid: { color: 'rgba(255,255,255,0.05)' },
-            ticks: { color: '#A9ADB5', font: { size: 10 } }
-        },
-        y: {
-            grid: { color: 'rgba(255,255,255,0.05)' },
-            ticks: { color: '#A9ADB5', font: { size: 10 } }
-        }
+        x: { ticks: { color: '#A9ADB5', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#A9ADB5', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
     }
 };
 
-function renderAllocationChart(eth, btc, stable, other) {
+function destroyChart(name) {
+    if (state.charts[name]) {
+        state.charts[name].destroy();
+        state.charts[name] = null;
+    }
+}
+
+function renderAllocationChart(ethUsd, btcUsd, stableUsd, otherUsd) {
     const ctx = document.getElementById('allocationChart');
-    if (state.charts.allocation) state.charts.allocation.destroy();
+    if (!ctx) return;
+    destroyChart('allocation');
     
     const data = [
-        { label: 'ETH', value: eth, color: chartColors.eth },
-        { label: 'BTC', value: btc, color: chartColors.btc },
-        { label: 'Stables', value: stable, color: chartColors.stable },
-        { label: 'Other', value: Math.max(0, other), color: chartColors.muted }
+        { label: 'ETH', value: ethUsd, color: chartColors.eth },
+        { label: 'BTC', value: btcUsd, color: chartColors.btc },
+        { label: 'Stables', value: stableUsd, color: chartColors.stable },
+        { label: 'Other', value: otherUsd, color: chartColors.gold }
     ].filter(d => d.value > 0);
     
     state.charts.allocation = new Chart(ctx, {
@@ -3039,43 +2764,8 @@ function renderAllocationChart(eth, btc, stable, other) {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    position: 'right',
-                    labels: { color: '#A9ADB5', font: { size: 11 } }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: ctx => `${ctx.label}: ${fmtUsd(ctx.raw)}`
-                    }
-                }
-            }
-        }
-    });
-}
-
-function renderChainChart(eth, btc) {
-    const ctx = document.getElementById('chainChart');
-    if (state.charts.chain) state.charts.chain.destroy();
-    
-    state.charts.chain = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Ethereum', 'Bitcoin'],
-            datasets: [{
-                data: [eth, btc],
-                backgroundColor: [chartColors.ethDim, chartColors.btcDim],
-                borderColor: [chartColors.eth, chartColors.btc],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            ...chartDefaults,
-            indexAxis: 'y',
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: { label: ctx => fmtUsd(ctx.raw) }
-                }
+                legend: { position: 'right', labels: { color: '#A9ADB5', font: { size: 11 } } },
+                tooltip: { callbacks: { label: ctx => `${ctx.label}: ${fmtUsd(ctx.raw)}` } }
             }
         }
     });
@@ -3083,119 +2773,20 @@ function renderChainChart(eth, btc) {
 
 function renderCombinedFlowChart() {
     const ctx = document.getElementById('combinedFlowChart');
-    if (state.charts.combinedFlow) state.charts.combinedFlow.destroy();
+    if (!ctx) return;
+    destroyChart('combinedFlow');
     
-    const data = generateFlowSeries();
+    const inflow = state.ethData.reduce((s, w) => s + w.inflow, 0);
+    const outflow = state.ethData.reduce((s, w) => s + w.outflow, 0);
     
     state.charts.combinedFlow = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: data.labels,
-            datasets: [
-                {
-                    label: 'Inflow',
-                    data: data.inflow,
-                    backgroundColor: chartColors.successDim,
-                    borderColor: chartColors.success,
-                    borderWidth: 1
-                },
-                {
-                    label: 'Outflow',
-                    data: data.outflow.map(v => -v),
-                    backgroundColor: chartColors.dangerDim,
-                    borderColor: chartColors.danger,
-                    borderWidth: 1
-                }
-            ]
-        },
-        options: {
-            ...chartDefaults,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: { color: '#A9ADB5', font: { size: 10 } }
-                }
-            },
-            scales: {
-                ...chartDefaults.scales,
-                x: { ...chartDefaults.scales.x, stacked: true },
-                y: { 
-                    ...chartDefaults.scales.y, 
-                    stacked: true,
-                    ticks: {
-                        ...chartDefaults.scales.y.ticks,
-                        callback: v => fmtEth(Math.abs(v))
-                    }
-                }
-            }
-        }
-    });
-}
-
-function renderAumChart() {
-    const ctx = document.getElementById('aumChart');
-    if (state.charts.aum) state.charts.aum.destroy();
-    
-    const data = generateAumSeries();
-    
-    state.charts.aum = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: data.labels,
+            labels: ['Inflow', 'Outflow'],
             datasets: [{
-                data: data.values,
-                borderColor: chartColors.gold,
-                backgroundColor: chartColors.goldDim,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 0
-            }]
-        },
-        options: {
-            ...chartDefaults,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: { label: ctx => fmtEth(ctx.raw) }
-                }
-            },
-            scales: {
-                ...chartDefaults.scales,
-                y: {
-                    ...chartDefaults.scales.y,
-                    ticks: {
-                        ...chartDefaults.scales.y.ticks,
-                        callback: v => fmtEth(v)
-                    }
-                }
-            }
-        }
-    });
-}
-
-function renderBalanceDistChart() {
-    const ctx = document.getElementById('balanceDistChart');
-    if (state.charts.balDist) state.charts.balDist.destroy();
-    
-    const balances = state.ethData.map(w => w.balance).filter(b => b > 0);
-    const buckets = [0.01, 0.1, 1, 10, 100, 1000, 10000];
-    const labels = ['<0.01', '0.01-0.1', '0.1-1', '1-10', '10-100', '100-1K', '1K-10K', '>10K'];
-    
-    const dist = buckets.map((b, i) => {
-        const min = i === 0 ? 0 : buckets[i - 1];
-        return balances.filter(bal => bal >= min && bal < b).length;
-    });
-    dist.push(balances.filter(b => b >= 10000).length);
-    
-    state.charts.balDist = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [{
-                data: dist,
-                backgroundColor: chartColors.goldDim,
-                borderColor: chartColors.gold,
+                data: [inflow, outflow],
+                backgroundColor: [chartColors.successDim, chartColors.dangerDim],
+                borderColor: [chartColors.success, chartColors.danger],
                 borderWidth: 1
             }]
         },
@@ -3203,9 +2794,65 @@ function renderBalanceDistChart() {
             ...chartDefaults,
             plugins: {
                 legend: { display: false },
-                tooltip: {
-                    callbacks: { label: ctx => `${ctx.raw} wallets` }
-                }
+                tooltip: { callbacks: { label: ctx => fmtEth(ctx.raw) } }
+            }
+        }
+    });
+}
+
+function renderAumChart() {
+    const ctx = document.getElementById('aumChart');
+    if (!ctx) return;
+    destroyChart('aum');
+    
+    const ethValue = state.ethData.reduce((s, w) => s + w.balance, 0) * state.prices.eth;
+    const tokenValue = state.ethData.reduce((s, w) => s + w.tokens.reduce((ts, t) => ts + (t.valueUsd || 0), 0), 0);
+    
+    state.charts.aum = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['ETH', 'Tokens'],
+            datasets: [{
+                data: [ethValue, tokenValue],
+                backgroundColor: [chartColors.eth, chartColors.gold],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right', labels: { color: '#A9ADB5', font: { size: 11 } } },
+                tooltip: { callbacks: { label: ctx => `${ctx.label}: ${fmtUsd(ctx.raw)}` } }
+            }
+        }
+    });
+}
+
+function renderBalanceDistChart() {
+    const ctx = document.getElementById('balanceDistChart');
+    if (!ctx) return;
+    destroyChart('balanceDist');
+    
+    const sorted = [...state.ethData].sort((a, b) => b.balance - a.balance);
+    
+    state.charts.balanceDist = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: sorted.map(w => w.label || shorten(w.address)),
+            datasets: [{
+                data: sorted.map(w => w.balance),
+                backgroundColor: chartColors.ethDim,
+                borderColor: chartColors.eth,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            ...chartDefaults,
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: ctx => fmtEth(ctx.raw) } }
             }
         }
     });
@@ -3213,25 +2860,30 @@ function renderBalanceDistChart() {
 
 function renderNetFlowChart() {
     const ctx = document.getElementById('netFlowChart');
-    if (state.charts.netFlow) state.charts.netFlow.destroy();
+    if (!ctx) return;
+    destroyChart('netFlow');
     
-    const data = generateFlowSeries();
+    const data = state.ethData.map(w => ({
+        label: w.label || shorten(w.address),
+        inflow: w.inflow,
+        outflow: w.outflow
+    }));
     
     state.charts.netFlow = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: data.labels,
+            labels: data.map(d => d.label),
             datasets: [
                 {
                     label: 'Inflow',
-                    data: data.inflow,
+                    data: data.map(d => d.inflow),
                     backgroundColor: chartColors.successDim,
                     borderColor: chartColors.success,
                     borderWidth: 1
                 },
                 {
                     label: 'Outflow',
-                    data: data.outflow.map(v => -v),
+                    data: data.map(d => -d.outflow),
                     backgroundColor: chartColors.dangerDim,
                     borderColor: chartColors.danger,
                     borderWidth: 1
@@ -3241,48 +2893,30 @@ function renderNetFlowChart() {
         options: {
             ...chartDefaults,
             plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: { color: '#A9ADB5', font: { size: 9 } }
-                }
+                legend: { display: true, labels: { color: '#A9ADB5', font: { size: 10 } } },
+                tooltip: { callbacks: { label: ctx => fmtEth(Math.abs(ctx.raw)) } }
             },
             scales: {
-                ...chartDefaults.scales,
-                x: { ...chartDefaults.scales.x, stacked: true },
-                y: { ...chartDefaults.scales.y, stacked: true }
+                x: { stacked: true, ticks: { color: '#A9ADB5' }, grid: { display: false } },
+                y: { stacked: true, ticks: { color: '#A9ADB5' }, grid: { color: 'rgba(255,255,255,0.05)' } }
             }
         }
     });
 }
 
-function renderTopTokensChart() {
+function renderTopTokensChart(tokens) {
     const ctx = document.getElementById('topTokensChart');
-    if (state.charts.tokens) state.charts.tokens.destroy();
+    if (!ctx) return;
+    destroyChart('topTokens');
     
-    // Aggregate tokens across all wallets with USD values
-    const tokenMap = new Map();
-    state.ethData.forEach(w => {
-        (w.analyzed?.tokens || []).forEach(t => {
-            const current = tokenMap.get(t.symbol) || { balance: 0, value: 0 };
-            tokenMap.set(t.symbol, {
-                balance: current.balance + t.balance,
-                value: current.value + t.value
-            });
-        });
-    });
+    const top10 = tokens.sort((a, b) => b.valueUsd - a.valueUsd).slice(0, 10);
     
-    // Sort by USD value and take top 10
-    const sorted = [...tokenMap.entries()]
-        .sort((a, b) => b[1].value - a[1].value)
-        .slice(0, 10);
-    
-    state.charts.tokens = new Chart(ctx, {
+    state.charts.topTokens = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: sorted.map(s => s[0]),
+            labels: top10.map(t => t.symbol),
             datasets: [{
-                data: sorted.map(s => s[1].value),
+                data: top10.map(t => t.valueUsd),
                 backgroundColor: chartColors.goldDim,
                 borderColor: chartColors.gold,
                 borderWidth: 1
@@ -3293,101 +2927,61 @@ function renderTopTokensChart() {
             indexAxis: 'y',
             plugins: {
                 legend: { display: false },
-                tooltip: {
+                tooltip: { 
                     callbacks: { 
                         label: ctx => {
-                            const token = sorted[ctx.dataIndex];
-                            return `${fmtUsd(token[1].value)} (${fmt(token[1].balance, 4)} ${token[0]})`;
+                            const token = top10[ctx.dataIndex];
+                            return `${fmtUsd(token.valueUsd)} (${fmt(token.balance, 4)} ${token.symbol})`;
                         }
                     }
                 }
             },
             scales: {
-                x: {
-                    ticks: {
-                        callback: value => fmtUsd(value),
-                        color: '#A9ADB5',
-                        font: { size: 10 }
-                    },
-                    grid: { color: 'rgba(255,255,255,0.05)' }
-                },
-                y: {
-                    ticks: { color: '#A9ADB5', font: { size: 10 } },
-                    grid: { display: false }
-                }
+                x: { ticks: { callback: v => fmtUsd(v), color: '#A9ADB5' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { ticks: { color: '#A9ADB5' }, grid: { display: false } }
             }
         }
     });
 }
 
-function renderTokenListTable() {
+function renderTokenListTable(tokens) {
     const tbody = document.querySelector('#allTokensTable tbody');
     if (!tbody) return;
     
-    // Aggregate all tokens across wallets
-    const tokenMap = new Map();
-    state.ethData.forEach(w => {
-        (w.analyzed?.tokens || []).forEach(t => {
-            const key = t.symbol;
-            const current = tokenMap.get(key) || { 
-                symbol: t.symbol, 
-                name: t.name,
-                balance: 0, 
-                value: 0, 
-                price: t.price 
-            };
-            tokenMap.set(key, {
-                ...current,
-                balance: current.balance + t.balance,
-                value: current.value + t.value
-            });
-        });
-    });
+    const sorted = tokens.sort((a, b) => b.valueUsd - a.valueUsd);
+    const totalValue = sorted.reduce((s, t) => s + t.valueUsd, 0);
     
-    // Sort by USD value
-    const tokens = [...tokenMap.values()].sort((a, b) => b.value - a.value);
-    
-    // Calculate total for percentage
-    const totalValue = tokens.reduce((sum, t) => sum + t.value, 0);
-    
-    if (tokens.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">
-                    No tokens found
-                </td>
-            </tr>
-        `;
+    if (sorted.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px;">No tokens found</td></tr>';
         return;
     }
     
-    tbody.innerHTML = tokens.map((t, i) => `
+    tbody.innerHTML = sorted.map((t, i) => `
         <tr>
             <td>${i + 1}</td>
-            <td>
-                <div style="font-weight: 500;">${t.symbol}</div>
-                ${t.name && t.name !== t.symbol ? `<div style="font-size: 10px; color: var(--text-muted);">${t.name}</div>` : ''}
-            </td>
-            <td style="text-align: right; font-family: monospace;">${fmt(t.balance, t.balance < 1 ? 6 : 2)}</td>
-            <td style="text-align: right; color: var(--text-muted);">${t.price > 0 ? fmtUsd(t.price) : '—'}</td>
-            <td style="text-align: right; font-weight: 500; color: ${t.value > 0 ? 'var(--gold)' : 'var(--text-muted)'};">${t.value > 0 ? fmtUsd(t.value) : '—'}</td>
-            <td style="text-align: right; color: var(--text-muted);">${totalValue > 0 ? ((t.value / totalValue) * 100).toFixed(1) + '%' : '—'}</td>
+            <td><div style="font-weight:500">${t.symbol}</div><div style="font-size:10px;color:var(--text-muted)">${t.name}</div></td>
+            <td style="text-align:right;font-family:monospace">${fmt(t.balance, t.balance < 1 ? 6 : 2)}</td>
+            <td style="text-align:right;color:var(--text-muted)">${t.price > 0 ? fmtUsd(t.price) : '—'}</td>
+            <td style="text-align:right;font-weight:500;color:${t.valueUsd > 0 ? 'var(--gold)' : 'var(--text-muted)'}">${t.valueUsd > 0 ? fmtUsd(t.valueUsd) : '—'}</td>
+            <td style="text-align:right;color:var(--text-muted)">${totalValue > 0 ? ((t.valueUsd / totalValue) * 100).toFixed(1) + '%' : '—'}</td>
         </tr>
     `).join('');
 }
 
 function renderSegmentChart() {
     const ctx = document.getElementById('segmentChart');
-    if (state.charts.segment) state.charts.segment.destroy();
+    if (!ctx) return;
+    destroyChart('segment');
     
-    const segments = {};
+    const segments = { Active: 0, Hodler: 0, Inactive: 0 };
     state.ethData.forEach(w => {
-        const seg = w.analyzed?.segment || 'Unknown';
-        segments[seg] = (segments[seg] || 0) + 1;
+        if (w.txCount > 10) segments.Active++;
+        else if (w.balance > 0) segments.Hodler++;
+        else segments.Inactive++;
     });
     
-    const data = Object.entries(segments).filter(e => e[1] > 0);
-    const colors = ['#B8A45A', '#34D399', '#60A5FA', '#F59E0B', '#A78BFA', '#EC4899', '#6B7280'];
+    const data = Object.entries(segments).filter(([_, v]) => v > 0);
+    const colors = ['#34D399', '#B8A45A', '#6B7280'];
     
     state.charts.segment = new Chart(ctx, {
         type: 'doughnut',
@@ -3402,57 +2996,45 @@ function renderSegmentChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: { color: '#A9ADB5', font: { size: 10 } }
-                }
-            }
+            plugins: { legend: { position: 'right', labels: { color: '#A9ADB5', font: { size: 10 } } } }
         }
     });
 }
 
 function renderHeatmap() {
     const container = document.getElementById('heatmapGrid');
+    if (!container) return;
+    
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const heat = Array(7).fill(null).map(() => Array(24).fill(0));
     
-    const now = Date.now();
-    const periodMs = state.period === 0 ? Infinity : state.period * 24 * 60 * 60 * 1000;
-    const cutoff = state.period === 0 ? 0 : now - periodMs;
-    
+    // Aggregate transactions by day/hour
     state.ethData.forEach(w => {
-        [...(w.rawTx || []), ...(w.rawInternalTx || [])].forEach(tx => {
-            const ts = parseInt(tx.timeStamp) * 1000;
-            if (ts >= cutoff) {
-                const d = new Date(ts);
-                heat[d.getUTCDay()][d.getUTCHours()]++;
-            }
+        (w.transactions || []).forEach(tx => {
+            const date = new Date(tx.timestamp * 1000);
+            const day = date.getUTCDay();
+            const hour = date.getUTCHours();
+            heat[day][hour]++;
         });
     });
     
-    const max = Math.max(...heat.flat()) || 1;
-    const level = v => {
-        if (v === 0) return '';
-        const p = v / max;
-        if (p <= 0.2) return 'l1';
-        if (p <= 0.4) return 'l2';
-        if (p <= 0.6) return 'l3';
-        if (p <= 0.8) return 'l4';
-        return 'l5';
-    };
+    const maxVal = Math.max(...heat.flat(), 1);
     
-    let html = '<div class="heatmap-label"></div>';
-    for (let h = 0; h < 24; h++) {
-        html += `<div class="heatmap-label">${h}</div>`;
+    let html = '<div class="heatmap-row heatmap-header"><div class="heatmap-label"></div>';
+    for (let h = 0; h < 24; h += 3) {
+        html += `<div class="heatmap-hour">${h}h</div>`;
     }
+    html += '</div>';
     
-    days.forEach((day, di) => {
-        html += `<div class="heatmap-label">${day}</div>`;
+    days.forEach((day, d) => {
+        html += `<div class="heatmap-row"><div class="heatmap-label">${day}</div>`;
         for (let h = 0; h < 24; h++) {
-            const v = heat[di][h];
-            html += `<div class="heatmap-cell ${level(v)}" title="${day} ${h}:00 - ${v} tx"></div>`;
+            const intensity = heat[d][h] / maxVal;
+            const alpha = Math.min(intensity * 0.8 + 0.1, 1);
+            const bg = heat[d][h] > 0 ? `rgba(184, 164, 90, ${alpha})` : 'rgba(255,255,255,0.03)';
+            html += `<div class="heatmap-cell" style="background:${bg}" title="${day} ${h}:00 - ${heat[d][h]} tx"></div>`;
         }
+        html += '</div>';
     });
     
     container.innerHTML = html;
@@ -3460,190 +3042,114 @@ function renderHeatmap() {
 
 function renderLorenzChart() {
     const ctx = document.getElementById('lorenzChart');
-    if (state.charts.lorenz) state.charts.lorenz.destroy();
+    if (!ctx) return;
+    destroyChart('lorenz');
     
-    const balances = state.ethData.map(w => w.balance).filter(b => b > 0).sort((a, b) => a - b);
-    const gini = calcGini(balances);
-    document.getElementById('giniValue').textContent = gini.toFixed(3);
+    const balances = state.ethData.map(w => w.balance * state.prices.eth).sort((a, b) => a - b);
+    if (balances.length === 0) return;
     
-    const n = balances.length || 1;
-    const total = balances.reduce((a, b) => a + b, 0) || 1;
+    const total = balances.reduce((s, v) => s + v, 0);
+    const n = balances.length;
     
-    const x = [0];
-    const equality = [0];
-    const actual = [0];
-    
+    // Calculate Lorenz curve points
+    const lorenz = [{ x: 0, y: 0 }];
     let cumSum = 0;
-    balances.forEach((bal, i) => {
-        cumSum += bal;
-        x.push(((i + 1) / n * 100).toFixed(0));
-        equality.push(((i + 1) / n * 100).toFixed(0));
-        actual.push((cumSum / total * 100).toFixed(1));
+    balances.forEach((v, i) => {
+        cumSum += v;
+        lorenz.push({ x: (i + 1) / n * 100, y: cumSum / total * 100 });
     });
+    
+    // Calculate Gini coefficient
+    let giniSum = 0;
+    for (let i = 0; i < n; i++) {
+        giniSum += (2 * (i + 1) - n - 1) * balances[i];
+    }
+    const gini = giniSum / (n * total);
+    document.getElementById('giniValue').textContent = gini.toFixed(3);
     
     state.charts.lorenz = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: x,
             datasets: [
                 {
-                    label: 'Equality',
-                    data: equality,
+                    label: 'Perfect Equality',
+                    data: [{ x: 0, y: 0 }, { x: 100, y: 100 }],
                     borderColor: chartColors.muted,
                     borderDash: [5, 5],
                     pointRadius: 0,
-                    tension: 0
+                    fill: false
                 },
                 {
-                    label: 'Actual',
-                    data: actual,
+                    label: 'Lorenz Curve',
+                    data: lorenz,
                     borderColor: chartColors.gold,
                     backgroundColor: chartColors.goldDim,
-                    fill: true,
                     pointRadius: 0,
-                    tension: 0.4
+                    fill: true
                 }
             ]
         },
         options: {
-            ...chartDefaults,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: { color: '#A9ADB5', font: { size: 9 } }
-                }
-            },
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
             scales: {
-                x: {
-                    ...chartDefaults.scales.x,
-                    title: { display: true, text: '% Wallets', color: chartColors.muted, font: { size: 9 } }
-                },
-                y: {
-                    ...chartDefaults.scales.y,
-                    title: { display: true, text: '% Wealth', color: chartColors.muted, font: { size: 9 } }
-                }
+                x: { type: 'linear', min: 0, max: 100, ticks: { callback: v => v + '%', color: '#A9ADB5' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { min: 0, max: 100, ticks: { callback: v => v + '%', color: '#A9ADB5' }, grid: { color: 'rgba(255,255,255,0.05)' } }
             }
         }
     });
 }
 
 function renderEthTables() {
-    // Top 10 wallets
-    const totalAum = state.ethData.reduce((s, w) => s + w.balance * state.ethPrice, 0);
-    const sorted = [...state.ethData]
-        .map(w => ({ ...w, usdValue: w.balance * state.ethPrice }))
-        .sort((a, b) => b.usdValue - a.usdValue)
-        .slice(0, 10);
-    
-    document.querySelector('#topWalletsTable tbody').innerHTML = sorted.map((w, i) => `
-        <tr>
-            <td>${i + 1}</td>
-            <td class="addr-cell">
-                <a href="https://etherscan.io/address/${w.address}" target="_blank">
-                    ${w.label || shorten(w.address)}
-                </a>
-            </td>
-            <td>${fmtUsd(w.usdValue)}</td>
-            <td>${((w.usdValue / totalAum) * 100).toFixed(1)}%</td>
-            <td><span class="tag tag-${w.analyzed?.isActive ? 'active' : 'dormant'}">${w.analyzed?.isActive ? 'Active' : 'Dormant'}</span></td>
-        </tr>
-    `).join('');
-    
-    // Segments table
-    const segments = {};
-    state.ethData.forEach(w => {
-        const seg = w.analyzed?.segment || 'Unknown';
-        if (!segments[seg]) segments[seg] = { count: 0, totalValue: 0 };
-        segments[seg].count++;
-        segments[seg].totalValue += w.balance * state.ethPrice;
-    });
-    
-    const total = state.ethData.length;
-    document.querySelector('#segmentsTable tbody').innerHTML = Object.entries(segments)
-        .sort((a, b) => b[1].count - a[1].count)
-        .map(([seg, data]) => `
+    // Top wallets table
+    const tbody = document.querySelector('#topWalletsTable tbody');
+    if (tbody) {
+        const sorted = [...state.ethData]
+            .map(w => ({ ...w, totalValue: w.balanceUsd + w.tokens.reduce((s, t) => s + (t.valueUsd || 0), 0) }))
+            .sort((a, b) => b.totalValue - a.totalValue)
+            .slice(0, 10);
+        
+        const totalAum = sorted.reduce((s, w) => s + w.totalValue, 0);
+        
+        tbody.innerHTML = sorted.map((w, i) => `
             <tr>
-                <td><span class="tag tag-${seg.toLowerCase()}">${seg}</span></td>
-                <td>${data.count}</td>
-                <td>${((data.count / total) * 100).toFixed(1)}%</td>
-                <td>${fmtUsd(data.totalValue / data.count)}</td>
+                <td>${i + 1}</td>
+                <td><div style="font-weight:500">${w.label || shorten(w.address)}</div></td>
+                <td style="font-weight:500;color:var(--gold)">${fmtUsd(w.totalValue)}</td>
+                <td>${totalAum > 0 ? ((w.totalValue / totalAum) * 100).toFixed(1) + '%' : '—'}</td>
+                <td><span style="color:${w.txCount > 0 ? 'var(--success)' : 'var(--text-muted)'}">${w.txCount > 0 ? 'Active' : 'Inactive'}</span></td>
             </tr>
         `).join('');
-    
-    // All wallets table
-    renderAllEthTable();
-}
-
-function renderAllEthTable() {
-    const wallets = state.ethData.map(w => ({
-        ...w,
-        usdValue: w.balance * state.ethPrice
-    }));
-    
-    const col = state.ethTableSort.col;
-    const asc = state.ethTableSort.asc;
-    
-    wallets.sort((a, b) => {
-        let va, vb;
-        switch (col) {
-            case 'address': va = (a.label || a.address).toLowerCase(); vb = (b.label || b.address).toLowerCase(); break;
-            case 'value': va = a.usdValue; vb = b.usdValue; break;
-            case 'tokens': va = a.analyzed?.tokCount || 0; vb = b.analyzed?.tokCount || 0; break;
-            case 'tx': va = a.analyzed?.totalTxCount || 0; vb = b.analyzed?.totalTxCount || 0; break;
-            case 'age': va = a.analyzed?.ageDays || 0; vb = b.analyzed?.ageDays || 0; break;
-            case 'last': va = a.analyzed?.lastAct?.getTime() || 0; vb = b.analyzed?.lastAct?.getTime() || 0; break;
-            default: va = a.usdValue; vb = b.usdValue;
-        }
-        if (va < vb) return asc ? -1 : 1;
-        if (va > vb) return asc ? 1 : -1;
-        return 0;
-    });
-    
-    document.querySelector('#allEthTable tbody').innerHTML = wallets.map((w, i) => `
-        <tr>
-            <td>${i + 1}</td>
-            <td class="addr-cell">
-                <a href="https://etherscan.io/address/${w.address}" target="_blank">
-                    ${w.label || shorten(w.address)}
-                </a>
-            </td>
-            <td style="font-weight: 500;">${fmtUsd(w.usdValue)}</td>
-            <td>${w.analyzed?.tokCount || 0}</td>
-            <td>${w.analyzed?.totalTxCount || 0}</td>
-            <td>${fmtAge(w.analyzed?.ageDays || 0)}</td>
-            <td>${w.analyzed?.lastAct ? w.analyzed.lastAct.toLocaleDateString() : '—'}</td>
-            <td style="font-size: 10px; color: ${w.analyzed?.fundingSource === 'Unknown' ? 'var(--text-muted)' : 'var(--gold)'};">
-                ${w.analyzed?.fundingSource || 'Unknown'}
-            </td>
-            <td><span class="tag tag-${(w.analyzed?.segment || 'unknown').toLowerCase()}">${w.analyzed?.segment || 'Unknown'}</span></td>
-        </tr>
-    `).join('');
-}
-
-function sortEthTable(col) {
-    if (state.ethTableSort.col === col) {
-        state.ethTableSort.asc = !state.ethTableSort.asc;
-    } else {
-        state.ethTableSort.col = col;
-        state.ethTableSort.asc = col === 'address';
     }
     
-    document.querySelectorAll('#allEthTable th.sortable').forEach(th => {
-        th.classList.remove('active');
-        th.querySelector('.sort-icon').textContent = '';
-        if (th.dataset.sort === col) {
-            th.classList.add('active');
-            th.querySelector('.sort-icon').textContent = state.ethTableSort.asc ? '▲' : '▼';
-        }
-    });
-    
-    renderAllEthTable();
+    // All wallets table
+    const allTbody = document.querySelector('#allEthWalletsTable tbody');
+    if (allTbody) {
+        const sorted = [...state.ethData]
+            .map(w => ({ ...w, totalValue: w.balanceUsd + w.tokens.reduce((s, t) => s + (t.valueUsd || 0), 0) }))
+            .sort((a, b) => b.totalValue - a.totalValue);
+        
+        allTbody.innerHTML = sorted.map((w, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td><a href="https://etherscan.io/address/${w.address}" target="_blank" style="color:var(--text)">${w.label || shorten(w.address)}</a></td>
+                <td style="color:var(--gold)">${fmtUsd(w.totalValue)}</td>
+                <td>${w.tokens.length}</td>
+                <td>${w.txCount}</td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+                <td><span style="color:${w.txCount > 0 ? 'var(--success)' : 'var(--text-muted)'}">${w.txCount > 0 ? 'Active' : 'Hodler'}</span></td>
+            </tr>
+        `).join('');
+    }
 }
 
 function renderBtcDistChart() {
     const ctx = document.getElementById('btcDistChart');
-    if (state.charts.btcDist) state.charts.btcDist.destroy();
+    if (!ctx) return;
+    destroyChart('btcDist');
     
     const sorted = [...state.btcData].sort((a, b) => b.balance - a.balance);
     
@@ -3663,9 +3169,7 @@ function renderBtcDistChart() {
             indexAxis: 'y',
             plugins: {
                 legend: { display: false },
-                tooltip: {
-                    callbacks: { label: ctx => fmtBtc(ctx.raw) }
-                }
+                tooltip: { callbacks: { label: ctx => fmtBtc(ctx.raw) } }
             }
         }
     });
@@ -3673,215 +3177,94 @@ function renderBtcDistChart() {
 
 function renderBtcFlowChart() {
     const ctx = document.getElementById('btcFlowChart');
-    if (state.charts.btcFlow) state.charts.btcFlow.destroy();
+    if (!ctx) return;
+    destroyChart('btcFlow');
+    
+    const received = state.btcData.reduce((s, w) => s + w.totalReceived, 0);
+    const sent = state.btcData.reduce((s, w) => s + w.totalSent, 0);
     
     state.charts.btcFlow = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: state.btcData.map(w => w.label || shorten(w.address)),
-            datasets: [
-                {
-                    label: 'Received',
-                    data: state.btcData.map(w => w.totalReceived),
-                    backgroundColor: chartColors.successDim,
-                    borderColor: chartColors.success,
-                    borderWidth: 1
-                },
-                {
-                    label: 'Sent',
-                    data: state.btcData.map(w => -w.totalSent),
-                    backgroundColor: chartColors.dangerDim,
-                    borderColor: chartColors.danger,
-                    borderWidth: 1
-                }
-            ]
+            labels: ['Received', 'Sent'],
+            datasets: [{
+                data: [received, sent],
+                backgroundColor: [chartColors.successDim, chartColors.dangerDim],
+                borderColor: [chartColors.success, chartColors.danger],
+                borderWidth: 1
+            }]
         },
         options: {
             ...chartDefaults,
             plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: { color: '#A9ADB5', font: { size: 10 } }
-                }
-            },
-            scales: {
-                ...chartDefaults.scales,
-                x: { ...chartDefaults.scales.x, stacked: true },
-                y: { ...chartDefaults.scales.y, stacked: true }
+                legend: { display: false },
+                tooltip: { callbacks: { label: ctx => fmtBtc(ctx.raw) } }
             }
         }
     });
 }
 
 function renderBtcTable() {
+    const tbody = document.querySelector('#allBtcTable tbody');
+    if (!tbody) return;
+    
     const sorted = [...state.btcData].sort((a, b) => b.balance - a.balance);
     
-    document.querySelector('#allBtcTable tbody').innerHTML = sorted.map((w, i) => `
+    tbody.innerHTML = sorted.map((w, i) => `
         <tr>
             <td>${i + 1}</td>
-            <td class="addr-cell">
-                <a href="https://blockstream.info/address/${w.address}" target="_blank">
-                    ${w.label || shorten(w.address)}
-                </a>
-            </td>
-            <td>${fmtBtc(w.balance)}</td>
-            <td>${fmtUsd(w.balance * state.btcPrice)}</td>
+            <td><a href="https://mempool.space/address/${w.address}" target="_blank" style="color:var(--text)">${w.label || shorten(w.address)}</a></td>
+            <td style="color:var(--btc-color)">${fmtBtc(w.balance)}</td>
+            <td style="color:var(--gold)">${fmtUsd(w.balanceUsd)}</td>
             <td>${w.txCount}</td>
-            <td>${fmtBtc(w.totalReceived)}</td>
-            <td>${fmtBtc(w.totalSent)}</td>
+            <td style="color:var(--success)">${fmtBtc(w.totalReceived)}</td>
+            <td style="color:var(--danger)">${fmtBtc(w.totalSent)}</td>
         </tr>
     `).join('');
 }
 
-// ============================================
-// TIME SERIES GENERATORS
-// ============================================
-function generateAumSeries() {
-    const now = Date.now();
-    const labels = [];
-    const values = [];
-    
-    const currentAum = state.ethData.reduce((s, w) => s + w.balance, 0);
-    
-    // Collect all transactions
-    const allTx = [];
-    let oldestTx = now;
-    state.ethData.forEach(w => {
-        [...(w.rawTx || []), ...(w.rawInternalTx || [])].forEach(tx => {
-            const ts = parseInt(tx.timeStamp) * 1000;
-            if (ts < oldestTx) oldestTx = ts;
-            allTx.push({
-                timestamp: ts,
-                value: weiToEth(tx.value),
-                isIncoming: tx.to?.toLowerCase() === w.address.toLowerCase()
-            });
-        });
-    });
-    
-    let days = state.period === 0 
-        ? Math.min(Math.ceil((now - oldestTx) / 864e5), 365)
-        : state.period;
-    if (days < 7) days = 7;
-    
-    if (allTx.length === 0) {
-        const step = Math.max(1, Math.floor(days / 30));
-        for (let i = days - 1; i >= 0; i -= step) {
-            labels.push(new Date(now - i * 864e5).toLocaleDateString('en', { month: 'short', day: 'numeric' }));
-            values.push(currentAum);
-        }
-        return { labels, values };
-    }
-    
-    let runningAum = currentAum;
-    const step = Math.max(1, Math.floor(days / 60));
-    
-    for (let i = 0; i < days; i += step) {
-        const dayStart = now - (i + 1) * 864e5;
-        const dayEnd = now - i * 864e5;
-        
-        const rangeTx = allTx.filter(tx => tx.timestamp >= dayStart && tx.timestamp < dayEnd);
-        const rangeNetFlow = rangeTx.reduce((s, tx) => s + (tx.isIncoming ? tx.value : -tx.value), 0);
-        
-        labels.unshift(new Date(dayEnd).toLocaleDateString('en', { month: 'short', day: 'numeric' }));
-        values.unshift(Math.max(0, runningAum));
-        
-        runningAum -= rangeNetFlow;
-    }
-    
-    return { labels, values };
-}
-
-function generateFlowSeries() {
-    const now = Date.now();
-    let oldestTx = now;
-    
-    state.ethData.forEach(w => {
-        [...(w.rawTx || []), ...(w.rawInternalTx || [])].forEach(tx => {
-            const ts = parseInt(tx.timeStamp) * 1000;
-            if (ts < oldestTx) oldestTx = ts;
-        });
-    });
-    
-    let days = state.period === 0 
-        ? Math.min(Math.ceil((now - oldestTx) / 864e5), 365)
-        : state.period;
-    if (days < 7) days = 7;
-    
-    const weeks = Math.min(Math.ceil(days / 7), 52);
-    const labels = [];
-    const inflow = [];
-    const outflow = [];
-    
-    for (let i = weeks - 1; i >= 0; i--) {
-        const wStart = now - (i + 1) * 7 * 864e5;
-        const wEnd = now - i * 7 * 864e5;
-        
-        let wIn = 0, wOut = 0;
-        
-        state.ethData.forEach(w => {
-            const addr = w.address.toLowerCase();
-            [...(w.rawTx || []), ...(w.rawInternalTx || [])].forEach(tx => {
-                const ts = parseInt(tx.timeStamp) * 1000;
-                if (ts >= wStart && ts < wEnd) {
-                    const val = weiToEth(tx.value);
-                    if (tx.to?.toLowerCase() === addr) wIn += val;
-                    else if (tx.from?.toLowerCase() === addr) wOut += val;
-                }
-            });
-        });
-        
-        labels.push('W' + (weeks - i));
-        inflow.push(wIn);
-        outflow.push(wOut);
-    }
-    
-    return { labels, inflow, outflow };
+function sortEthTable(col) {
+    // Simple sort toggle - can be expanded
+    state.ethTableSort = { col, asc: state.ethTableSort?.col === col ? !state.ethTableSort.asc : false };
+    renderEthTables();
 }
 
 // ============================================
 // INITIALIZATION
 // ============================================
-function initSettingsChips() {
-    Object.entries(state.visibleStats).forEach(([stat, visible]) => {
-        document.querySelectorAll(`.setting-chip[data-stat="${stat}"]`).forEach(el => {
-            el.classList.toggle('active', visible);
-        });
-    });
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
     loadState();
-    initSettingsChips();
+    
+    // Set default period to 180 days (6 months)
+    const labels = { 7: '7D', 30: '30D', 90: '90D', 180: '6M', 365: '1Y', 0: 'All' };
+    document.getElementById('periodValue').textContent = labels[state.period] || '6M';
+    document.querySelectorAll('.dropdown-item[data-period]').forEach(el => {
+        el.classList.toggle('active', parseInt(el.dataset.period) === state.period);
+    });
+    
+    // Initialize UI
     renderWalletList();
     updateCounts();
     updateMobileWalletCount();
     setSegment(state.segment);
     
-    // Set initial period display
-    const labels = { 7: '7D', 30: '30D', 90: '90D', 365: '1Y', 0: 'All' };
-    document.getElementById('periodValue').textContent = labels[state.period] || '30D';
-    document.querySelectorAll('.dropdown-item[data-period]').forEach(el => {
-        el.classList.toggle('active', parseInt(el.dataset.period) === state.period);
+    // Initialize settings chips
+    Object.entries(state.visibleStats).forEach(([stat, visible]) => {
+        document.querySelectorAll(`.setting-chip[data-stat="${stat}"]`).forEach(el => {
+            el.classList.toggle('active', visible);
+        });
     });
     
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('#periodDropdown')) {
-            closePeriodDropdown();
-        }
+    // Close dropdown on outside click
+    document.addEventListener('click', e => {
+        if (!e.target.closest('#periodDropdown')) closePeriodDropdown();
     });
     
-    // Fetch prices on load
+    // Fetch initial prices
     await fetchPrices();
     
-    // If we have wallets but no data, mark as needs refresh
-    if (state.wallets.length > 0 && state.ethData.length === 0 && state.btcData.length === 0) {
-        markNeedsRefresh();
-    }
-    
-    document.getElementById('apiStatus').textContent = state.ethPrice > 0 ? 'Ready' : 'Error';
-    document.getElementById('apiStatus').className = 'status-value ' + (state.ethPrice > 0 ? 'success' : 'warning');
+    document.getElementById('apiStatus').textContent = state.prices.eth > 0 ? 'Ready' : 'Error';
+    document.getElementById('apiStatus').className = 'status-value ' + (state.prices.eth > 0 ? 'success' : 'warning');
 });
 </script>
 </body>
